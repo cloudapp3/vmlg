@@ -1,0 +1,22 @@
+[Unit]
+Description=vmlg Network & BGP Looking Glass Server
+Documentation=https://github.com/cloudapp3/vmlg
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+DynamicUser=yes
+ConfigurationDirectory=vmlg
+ExecStartPre=/usr/bin/vmlg check -config /etc/vmlg/config.toml
+ExecStart=/usr/bin/vmlg serve -config /etc/vmlg/config.toml
+AmbientCapabilities=CAP_NET_RAW
+CapabilityBoundingSet=CAP_NET_RAW
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+Restart=on-failure
+RestartSec=3s
+
+[Install]
+WantedBy=multi-user.target

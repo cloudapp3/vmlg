@@ -1,0 +1,18 @@
+name: Feature Request
+description: Suggest an enhancement, BGP driver, or carrier/IXP rule
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Use case / Problem
+      description: What scenario or workflow would this improve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe how you envision this working.
+    validations:
+      required: true

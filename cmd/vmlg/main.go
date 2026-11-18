@@ -23,6 +23,7 @@ import (
 	"github.com/cloudapp3/vmlg/internal/mcp"
 	"github.com/cloudapp3/vmlg/internal/server"
 	"github.com/cloudapp3/vmlg/internal/speedtest"
+	"github.com/cloudapp3/vmlg/internal/updater"
 	"github.com/cloudapp3/vmlg/internal/version"
 )
 
@@ -57,6 +58,8 @@ func run(args []string) int {
 		return runMCPMode(args)
 	case "healthcheck":
 		return runHealthcheck(args)
+	case "update":
+		return runUpdate(args)
 	case "check":
 		return runCheck(args)
 	case "version":
@@ -433,6 +436,39 @@ func runHealthcheck(args []string) int {
 	return 0
 }
 
+func runUpdate(args []string) int {
+	fs := flag.NewFlagSet("update", flag.ContinueOnError)
+	targetVer := fs.String("version", "", "Target release tag (e.g. v0.1.0); defaults to latest")
+	asJSON := fs.Bool("json", false, "Output update result as JSON")
+	if err := fs.Parse(args); err != nil {
+		return 2
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	defer cancel()
+
+	res, err := updater.Update(ctx, version.Version, updater.Options{
+		TargetVersion: *targetVer,
+	})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "update failed: %v\n", err)
+		return 1
+	}
+
+	if *asJSON {
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+		_ = enc.Encode(res)
+		return 0
+	}
+	if !res.Updated {
+		fmt.Printf("vmlg is already up to date (%s)\n", res.Version)
+		return 0
+	}
+	fmt.Printf("Updated vmlg from %s to %s (%s)\n", res.PreviousVersion, res.Version, res.SHA256[:12])
+	return 0
+}
+
 func runCheck(args []string) int {
 	fs := flag.NewFlagSet("check", flag.ContinueOnError)
 	cfgPath := fs.String("config", "", "Path to TOML config file")
@@ -485,6 +521,7 @@ Usage:
   vmlg agent [flags]      Start lightweight regional Looking Glass Agent
   vmlg mcp [flags]        Start stdio JSON-RPC MCP server (local or remote Hub)
   vmlg healthcheck        Probe container/local service readiness
+  vmlg update [flags]     Self-update binary from GitHub Releases (SHA-256 verified)
   vmlg check -config FILE Validate a TOML configuration file
   vmlg version [-json]    Print build and runtime version info
 

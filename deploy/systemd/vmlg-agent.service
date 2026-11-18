@@ -1,0 +1,22 @@
+[Unit]
+Description=vmlg Regional Looking Glass Agent
+Documentation=https://github.com/cloudapp3/vmlg
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+DynamicUser=yes
+ConfigurationDirectory=vmlg
+ExecStartPre=/usr/bin/vmlg check -config /etc/vmlg/agent.toml
+ExecStart=/usr/bin/vmlg agent -config /etc/vmlg/agent.toml
+AmbientCapabilities=CAP_NET_RAW
+CapabilityBoundingSet=CAP_NET_RAW
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+Restart=always
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target

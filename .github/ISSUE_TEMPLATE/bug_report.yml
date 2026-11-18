@@ -1,0 +1,30 @@
+name: Bug Report
+description: Report a bug or unexpected behavior in vmlg
+labels: ["bug"]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: vmlg Version
+      description: Output of `vmlg version`
+      placeholder: v0.1.0 (linux/amd64)
+    validations:
+      required: true
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Deployment Mode
+      options:
+        - standalone
+        - hub + agent
+        - docker / compose
+        - mcp
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Clear description of the bug and steps to reproduce.
+    validations:
+      required: true

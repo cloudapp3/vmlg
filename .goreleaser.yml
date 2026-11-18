@@ -74,3 +74,10 @@ nfpms:
     contents:
       - src: ./LICENSE
         dst: /usr/share/licenses/vmlg/LICENSE
+      - src: ./deploy/systemd/vmlg.service
+        dst: /lib/systemd/system/vmlg.service
+      - src: ./deploy/systemd/vmlg-agent.service
+        dst: /lib/systemd/system/vmlg-agent.service
+      - src: ./examples/standalone.toml
+        dst: /etc/vmlg/config.toml
+        type: "config|noreplace"
