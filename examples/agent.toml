@@ -1,0 +1,42 @@
+mode = "agent"
+
+[node]
+id = "lax-01"
+name = "Los Angeles · CN2 GIA"
+location = "Los Angeles, US"
+region = "NA"
+provider = "CoreSite LA1"
+asn = "AS64513"
+public_host = "lax-lg.example.com"
+public_url = "https://lax-lg.example.com"
+tags = ["CN2 GIA", "CU 9929", "10Gbps"]
+
+[agent]
+hub_url = "wss://lg.example.com/api/v1/cluster/ws"
+token = "replace-with-strong-cluster-token"
+speedtest_listen = "0.0.0.0:8081"
+signing_secret = "replace-with-strong-hmac-signing-secret"
+require_signed_speed = true
+heartbeat_seconds = 15
+reconnect_max_seconds = 30
+
+[guard]
+allow_private_targets = false
+client_rpm = 30
+client_burst = 10
+target_rpm = 20
+target_burst = 8
+max_concurrent_probes = 8
+max_concurrent_speedtest = 4
+
+[speedtest]
+enabled = true
+max_rate_mbps = 1000
+test_files = ["10MB.bin", "100MB.bin", "1GB.bin"]
+
+[iperf3]
+enabled = true
+port_start = 5201
+port_end = 5210
+lease_seconds = 120
+max_active = 4

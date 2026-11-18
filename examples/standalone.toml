@@ -1,0 +1,71 @@
+mode = "standalone"
+
+[server]
+listen = "0.0.0.0:8080"
+title = "vmlg Looking Glass"
+subtitle = "Tokyo Premium BGP Network Diagnostics"
+default_locale = "zh-CN"
+trusted_proxies = ["127.0.0.1/32", "::1/128"]
+cors_origins = ["*"]
+enable_metrics = true
+# Optional Bearer token for /metrics (or set env VMLG_METRICS_TOKEN):
+metrics_token = ""
+
+[node]
+id = "tyo-01"
+name = "Tokyo · BGP Premium"
+location = "Tokyo, JP"
+region = "APAC"
+provider = "Equinix TY8"
+asn = "AS64512"
+public_host = "tyo-lg.example.com"
+tags = ["CN2 GIA", "CU 9929", "10Gbps"]
+
+[guard]
+allow_private_targets = false
+# Uncomment for DN42 deployments:
+# allowed_reserved_cidrs = ["172.20.0.0/14", "fd00::/8"]
+blocked_cidrs = []
+client_rpm = 30
+client_burst = 10
+target_rpm = 20
+target_burst = 8
+max_concurrent_probes = 8
+max_concurrent_speedtest = 4
+
+[probe]
+ping_default_count = 4
+ping_max_count = 10
+ping_timeout_ms = 1500
+ping_interval_ms = 350
+mtr_default_cycles = 5
+mtr_max_cycles = 10
+mtr_max_hops = 30
+enable_dns_asn = true
+enable_ptr = true
+
+[speedtest]
+enabled = true
+max_rate_mbps = 0 # 0 = unlimited; set e.g. 500 to cap per-stream rate at 500 Mbps
+max_download_bytes = 268435456
+max_upload_bytes = 134217728
+test_files = ["10MB.bin", "100MB.bin", "1GB.bin"]
+
+[iperf3]
+enabled = true
+binary = "iperf3"
+port_start = 5201
+port_end = 5210
+lease_seconds = 120
+max_active = 4
+
+[bgp]
+enabled = false
+driver = "bird" # bird | frr | gobgp | mock
+router_asn = "AS64512"
+bird_socket = "/run/bird/bird.ctl"
+
+[bgp.communities]
+"64512:100" = "Customer Route"
+"64512:200" = "IXP Peer"
+"64512:1000:1" = "HKIX Learned"

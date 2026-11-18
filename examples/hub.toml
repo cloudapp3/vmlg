@@ -1,0 +1,32 @@
+mode = "hub"
+
+[server]
+listen = "0.0.0.0:8080"
+title = "Global Cloud Looking Glass"
+subtitle = "Multi-Region Latency, Return Route & Speedtest Portal"
+default_locale = "zh-CN"
+trusted_proxies = ["127.0.0.1/32", "::1/128"]
+
+[node]
+id = "hub-hkg"
+name = "Hong Kong · Hub"
+location = "Hong Kong"
+region = "APAC"
+tags = ["HKIX", "CMIN2"]
+
+[hub]
+# Replace with a strong random secret (or set env VMLG_AGENT_TOKEN)
+agent_token = "replace-with-strong-cluster-token"
+# Shared with agents that enable require_signed_speed = true (or set env VMLG_SIGNING_SECRET)
+signing_secret = "replace-with-strong-hmac-signing-secret"
+enable_local_node = true
+token_ttl_seconds = 300
+
+[guard]
+allow_private_targets = false
+client_rpm = 40
+client_burst = 12
+target_rpm = 25
+target_burst = 10
+max_concurrent_probes = 16
+max_concurrent_speedtest = 4

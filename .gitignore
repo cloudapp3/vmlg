@@ -1,0 +1,25 @@
+# Binaries
+/vmlg
+/bin/
+/dist/
+*.exe
+*.out
+*.test
+
+# Local configs & secrets
+config.local.toml
+secrets/
+*.pem
+*.key
+
+# Coverage & profiling
+coverage.out
+*.prof
+
+# Editor & OS
+.DS_Store
+.idea/
+.vscode/
+.agents/
+.claude/
+.codex/

@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>vmlg Looking Glass</title>
+    <script>
+        (function () {
+            try {
+                var saved = localStorage.getItem('vmlg-theme') || 'dark';
+                document.documentElement.setAttribute('data-theme', saved);
+            } catch (e) {}
+        })();
+    </script>
+    <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+    <header class="topbar">
+        <div class="container topbar-inner">
+            <div class="brand">
+                <span class="brand-mark">◈</span>
+                <div>
+                    <h1 class="brand-title" id="portal-title">vmlg Looking Glass</h1>
+                    <p class="brand-subtitle" id="portal-subtitle">Multi-Node Network Diagnostics &amp; Speedtest</p>
+                </div>
+                <span class="mode-badge" id="portal-mode">STANDALONE</span>
+            </div>
+
+            <div class="topbar-controls">
+                <div class="visitor-pill" id="visitor-pill" title="Click to fill your IP into target box">
+                    <span class="visitor-label" data-i18n="your_ip">你的 IP</span>
+                    <code class="visitor-ip" id="visitor-ip">...</code>
+                    <span class="line-badge subtle" id="visitor-asn" hidden></span>
+                    <button type="button" class="btn-mini" id="btn-use-my-ip" data-i18n="probe_me">测我本机</button>
+                </div>
+
+                <div class="toolbar-btns">
+                    <button type="button" class="icon-btn" id="btn-lang" title="Switch Language">EN</button>
+                    <button type="button" class="icon-btn" id="btn-theme" title="Toggle Theme">◐</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="container main-stack">
+        <!-- Node Selector Section -->
+        <section class="card">
+            <div class="card-header">
+                <div class="card-title-wrap">
+                    <h2 class="card-title" data-i18n="nodes_title">可用测试节点</h2>
+                    <span class="pill-count" id="nodes-online-count">0 / 0</span>
+                </div>
+                <button type="button" class="btn-ghost btn-sm" id="btn-refresh-nodes" data-i18n="refresh">刷新状态</button>
+            </div>
+            <div class="node-grid" id="node-grid"></div>
+        </section>
+
+        <!-- Navigation Tabs -->
+        <nav class="tabs" role="tablist">
+            <button type="button" class="tab active" data-tab="compare" data-i18n="tab_compare">⚡ 多节点同屏横评</button>
+            <button type="button" class="tab" data-tab="diag" data-i18n="tab_diag">🧭 路由追踪 &amp; Ping</button>
+            <button type="button" class="tab" data-tab="speed" data-i18n="tab_speed">🚀 带宽测速 &amp; iPerf3</button>
+            <button type="button" class="tab" data-tab="bgp" id="tab-btn-bgp" data-i18n="tab_bgp">🌐 BGP 路由 &amp; 拓扑</button>
+            <button type="button" class="tab" data-tab="share" data-i18n="tab_share">📋 脱敏报告导出</button>
+        </nav>
+
+        <!-- Shared Target Input Bar (Visible on Compare & Diag tabs) -->
+        <section class="card target-bar" id="target-bar">
+            <form id="probe-form" class="probe-form">
+                <div class="input-group grow">
+                    <label for="target-input" data-i18n="target_label">目标 IP 或域名</label>
+                    <div class="input-with-chips">
+                        <input type="text" id="target-input" placeholder="e.g. 1.1.1.1, 8.8.8.8, cloudflare.com" autocomplete="off" spellcheck="false" required>
+                        <div class="preset-chips">
+                            <button type="button" class="chip" data-fill="1.1.1.1">1.1.1.1</button>
+                            <button type="button" class="chip" data-fill="8.8.8.8">8.8.8.8</button>
+                            <button type="button" class="chip" data-fill="2606:4700:4700::1111">IPv6 DNS</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label for="ipver-select" data-i18n="ip_version">协议栈</label>
+                    <select id="ipver-select">
+                        <option value="auto">Auto</option>
+                        <option value="v4">IPv4</option>
+                        <option value="v6">IPv6</option>
+                    </select>
+                </div>
+
+                <div class="input-group" id="diag-tool-group" hidden>
+                    <label for="diag-tool-select" data-i18n="diag_tool">诊断工具</label>
+                    <select id="diag-tool-select">
+                        <option value="mtr">Live MTR (Route + Loss)</option>
+                        <option value="icmp">ICMP Ping</option>
+                        <option value="tcp">TCP Ping (Port 443)</option>
+                    </select>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn-primary" id="btn-run-probe" data-i18n="start_test">开始测试</button>
+                    <button type="button" class="btn-danger" id="btn-stop-probe" hidden data-i18n="stop_test">停止</button>
+                </div>
+            </form>
+            <div class="error-banner" id="probe-error" hidden></div>
+        </section>
+
+        <!-- TAB 1: Multi-Node Compare -->
+        <section class="tab-panel active" id="panel-compare">
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <h2 class="card-title" data-i18n="compare_heading">全球节点并发延迟与回程线路对比</h2>
+                        <p class="card-desc" data-i18n="compare_desc">一次输入访客 IP，所有在线节点同步探测延迟、丢包率并自动识别回程骨干网类型（CN2 GIA / 9929 / CMIN2 / IXP）。</p>
+                    </div>
+                    <label class="checkbox-inline">
+                        <input type="checkbox" id="compare-include-route" checked>
+                        <span data-i18n="include_route">同步追踪回程线路</span>
+                    </label>
+                </div>
+
+                <div class="table-wrap">
+                    <table class="data-table" id="compare-table">
+                        <thead>
+                            <tr>
+                                <th data-i18n="col_node">节点</th>
+                                <th data-i18n="col_route">回程线路判定</th>
+                                <th data-i18n="col_avg_rtt">平均延迟</th>
+                                <th data-i18n="col_minmax">最值 / 抖动</th>
+                                <th data-i18n="col_loss">丢包率</th>
+                                <th data-i18n="col_detail">详情</th>
+                            </tr>
+                        </thead>
+                        <tbody id="compare-tbody">
+                            <tr class="empty-row">
+                                <td colspan="6" data-i18n="compare_empty">点击上方「测我本机」或输入目标后点击「开始测试」，即可同屏对比全部在线节点。</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 2: Single-Node Diagnostics (MTR & Ping) -->
+        <section class="tab-panel" id="panel-diag" hidden>
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <h2 class="card-title">
+                            <span data-i18n="diag_current_node">当前节点：</span>
+                            <span class="accent-text" id="diag-node-label">—</span>
+                        </h2>
+                        <p class="card-desc" id="diag-status-line" data-i18n="diag_ready">选择上方节点并启动实时流式 MTR 或 Ping 诊断。</p>
+                    </div>
+                    <span class="engine-pill" id="diag-engine-pill" hidden></span>
+                </div>
+
+                <!-- Ping Summary Metrics & Sparkline -->
+                <div id="ping-view" hidden>
+                    <div class="stats-grid">
+                        <div class="stat-box">
+                            <span class="stat-label" data-i18n="stat_avg">平均 RTT</span>
+                            <span class="stat-val" id="ping-avg">—</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-label" data-i18n="stat_min_max">最小 / 最大</span>
+                            <span class="stat-val" id="ping-minmax">—</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-label" data-i18n="stat_jitter">抖动 (Jitter)</span>
+                            <span class="stat-val" id="ping-jitter">—</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-label" data-i18n="stat_loss">丢包率</span>
+                            <span class="stat-val" id="ping-loss">—</span>
+                        </div>
+                    </div>
+                    <div class="ping-bars" id="ping-bars"></div>
+                    <div class="terminal-box" id="ping-log"></div>
+                </div>
+
+                <!-- MTR Live Hop Table -->
+                <div id="mtr-view">
+                    <div class="mtr-route-banner" id="mtr-route-banner" hidden>
+                        <span data-i18n="detected_route">识别线路类型：</span>
+                        <span class="line-badge" id="mtr-verdict-badge"></span>
+                        <span class="muted-text" id="mtr-cycle-progress"></span>
+                    </div>
+                    <div class="table-wrap">
+                        <table class="data-table mono-nums">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th data-i18n="col_hop_host">跳点 IP / PTR</th>
+                                    <th data-i18n="col_asn_org">ASN / 运营商 &amp; IXP</th>
+                                    <th>Loss%</th>
+                                    <th>Snt</th>
+                                    <th>Last</th>
+                                    <th>Avg</th>
+                                    <th>Best</th>
+                                    <th>Wrst</th>
+                                    <th>StDev</th>
+                                </tr>
+                            </thead>
+                            <tbody id="mtr-tbody">
+                                <tr class="empty-row">
+                                    <td colspan="10" data-i18n="mtr_empty">等待开始实时 MTR 路由追踪…</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 3: Speedtest, Zero-Disk Files & iPerf3 -->
+        <section class="tab-panel" id="panel-speed" hidden>
+            <div class="speed-layout">
+                <!-- HTML5 Interactive Speedtest -->
+                <div class="card">
+                    <div class="card-header">
+                        <div>
+                            <h2 class="card-title">
+                                <span data-i18n="speedtest_title">HTML5 浏览器直连测速</span>
+                                · <span class="accent-text" id="speed-node-label">—</span>
+                            </h2>
+                            <p class="card-desc" data-i18n="speedtest_desc">纯内存伪随机不可压缩流直连测试，零磁盘落盘开销。</p>
+                        </div>
+                        <div class="form-actions">
+                            <button type="button" class="btn-primary" id="btn-start-speedtest" data-i18n="start_speedtest">开始测速</button>
+                            <button type="button" class="btn-danger" id="btn-stop-speedtest" hidden data-i18n="stop_test">停止</button>
+                        </div>
+                    </div>
+
+                    <div class="stats-grid">
+                        <div class="stat-box highlight-down">
+                            <span class="stat-label" data-i18n="dl_mbps">下载带宽 (Mbps)</span>
+                            <span class="stat-val big" id="st-dl">—</span>
+                        </div>
+                        <div class="stat-box highlight-up">
+                            <span class="stat-label" data-i18n="ul_mbps">上传带宽 (Mbps)</span>
+                            <span class="stat-val big" id="st-ul">—</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-label">Ping (ms)</span>
+                            <span class="stat-val" id="st-ping">—</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-label">Jitter (ms)</span>
+                            <span class="stat-val" id="st-jitter">—</span>
+                        </div>
+                    </div>
+
+                    <canvas id="speed-canvas" width="760" height="150"></canvas>
+                    <p class="muted-text status-line" id="st-phase-text"></p>
+                </div>
+
+                <!-- Zero-Disk Test Files & Ephemeral iPerf3 -->
+                <div class="side-stack">
+                    <div class="card">
+                        <h3 class="card-title" data-i18n="testfiles_title">零落盘测速文件下载</h3>
+                        <p class="card-desc" data-i18n="testfiles_desc">服务端内存实时流式生成，支持浏览器或命令行多线程拉取。</p>
+                        <div class="file-list" id="testfiles-list"></div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header compact">
+                            <h3 class="card-title" data-i18n="iperf_title">iPerf3 临时端口租约</h3>
+                            <span class="line-badge subtle" id="iperf-cap-badge">—</span>
+                        </div>
+                        <p class="card-desc" data-i18n="iperf_desc">按需分配独占临时端口并启动单会话 iPerf3 服务端，到期自动销毁防滥用。</p>
+                        <button type="button" class="btn-secondary full-width" id="btn-lease-iperf" data-i18n="lease_iperf">申请临时 iPerf3 端口</button>
+
+                        <div class="iperf-lease-box" id="iperf-lease-box" hidden>
+                            <div class="lease-timer-row">
+                                <span data-i18n="lease_port">分配端口：</span>
+                                <strong id="iperf-port-val">—</strong>
+                                <span class="spacer"></span>
+                                <span class="timer-pill" id="iperf-countdown">120s</span>
+                            </div>
+                            <div class="cmd-copy-row">
+                                <code id="iperf-cmd-tcp"></code>
+                                <button type="button" class="btn-mini" data-copy-target="iperf-cmd-tcp" data-i18n="copy">复制</button>
+                            </div>
+                            <div class="cmd-copy-row">
+                                <code id="iperf-cmd-rev"></code>
+                                <button type="button" class="btn-mini" data-copy-target="iperf-cmd-rev" data-i18n="copy">复制</button>
+                            </div>
+                        </div>
+                        <div class="error-banner" id="iperf-error" hidden></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 4: BGP Looking Glass & AS-Path SVG Topology -->
+        <section class="tab-panel" id="panel-bgp" hidden>
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <h2 class="card-title">
+                            <span data-i18n="bgp_title">BGP 路由表查询与 AS-Path 拓扑图</span>
+                            · <span class="accent-text" id="bgp-node-label">—</span>
+                        </h2>
+                        <p class="card-desc" data-i18n="bgp_desc">只读对接 BIRD 2/3、FRRouting、GoBGP，支持前缀路由优选分析、Large Community 解码与纯 SVG 自治系统路径拓扑。</p>
+                    </div>
+                    <div class="form-actions">
+                        <span class="engine-pill" id="bgp-driver-pill">—</span>
+                        <button type="button" class="btn-secondary" id="btn-bgp-summary" data-i18n="bgp_peers_btn">查看 BGP 邻居会话</button>
+                    </div>
+                </div>
+
+                <div id="bgp-disabled-notice" class="muted-text" style="padding:14px 0" hidden data-i18n="bgp_disabled">
+                    当前选中节点未开启 BGP 模块（可在配置中设置 [bgp] enabled = true 并指定 bird / frr / gobgp 驱动）。
+                </div>
+
+                <div id="bgp-content-wrap">
+                    <div class="svg-topo-box" id="bgp-svg-wrap" hidden></div>
+
+                    <div class="table-wrap" id="bgp-paths-wrap" hidden>
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Best</th>
+                                    <th>Protocol / Peer</th>
+                                    <th>Next Hop</th>
+                                    <th>LocalPref / MED</th>
+                                    <th>AS-Path</th>
+                                    <th>Communities</th>
+                                </tr>
+                            </thead>
+                            <tbody id="bgp-paths-tbody"></tbody>
+                        </table>
+                    </div>
+
+                    <div class="table-wrap" id="bgp-peers-wrap" hidden style="margin-top:14px">
+                        <table class="data-table mono-nums">
+                            <thead>
+                                <tr>
+                                    <th>Session / Peer</th>
+                                    <th>Neighbor</th>
+                                    <th>ASN / Organization</th>
+                                    <th>State</th>
+                                    <th>Uptime</th>
+                                    <th>Prefixes</th>
+                                </tr>
+                            </thead>
+                            <tbody id="bgp-peers-tbody"></tbody>
+                        </table>
+                    </div>
+
+                    <details class="raw-details" id="bgp-raw-details" hidden>
+                        <summary data-i18n="bgp_raw">查看路由器原始输出 (Raw RIB Output)</summary>
+                        <pre class="terminal-box" id="bgp-raw-pre"></pre>
+                    </details>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 5: Redacted Share Markdown -->
+        <section class="tab-panel" id="panel-share" hidden>
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <h2 class="card-title" data-i18n="share_title">论坛直贴 Markdown 报告导出</h2>
+                        <p class="card-desc" data-i18n="share_desc">自动汇总最近一次多节点横评、MTR 路由及测速结果，默认对公网目标 IP 末段打码保护隐私。</p>
+                    </div>
+                    <div class="form-actions">
+                        <label class="checkbox-inline">
+                            <input type="checkbox" id="share-redact-toggle" checked>
+                            <span data-i18n="redact_ip">自动脱敏目标 IP</span>
+                        </label>
+                        <button type="button" class="btn-primary" id="btn-copy-markdown" data-i18n="copy_md">一键复制 Markdown</button>
+                    </div>
+                </div>
+                <textarea id="share-markdown-box" class="markdown-area" rows="16" readonly></textarea>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer container">
+        <span>Powered by <strong>vmlg</strong> <span id="footer-version"></span></span>
+        <span>·</span>
+        <span>Zero-Disk Stream &amp; Dual-Dimension Guard</span>
+    </footer>
+
+    <script type="module" src="/js/app.js"></script>
+</body>
+</html>
