@@ -48,6 +48,18 @@ func TestStandaloneWebMetaAndSSRFBlock(t *testing.T) {
 	if resp.StatusCode != http.StatusOK || !strings.Contains(string(body), "vmlg Looking Glass") {
 		t.Fatalf("unexpected index.html response: status=%d", resp.StatusCode)
 	}
+	if got := resp.Header.Get("X-Frame-Options"); got != "SAMEORIGIN" {
+		t.Fatalf("expected X-Frame-Options SAMEORIGIN on normal view, got %q", got)
+	}
+
+	embedResp, err := http.Get(ts.URL + "/?embed=1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = embedResp.Body.Close()
+	if got := embedResp.Header.Get("X-Frame-Options"); got != "" {
+		t.Fatalf("expected X-Frame-Options omitted on ?embed=1 widget view, got %q", got)
+	}
 
 	// 2. /api/v1/meta returns node list
 	metaResp, err := http.Get(ts.URL + "/api/v1/meta")

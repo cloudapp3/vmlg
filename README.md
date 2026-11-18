@@ -2,6 +2,8 @@
 
 [![CI](https://github.com/cloudapp3/vmlg/actions/workflows/ci.yml/badge.svg)](https://github.com/cloudapp3/vmlg/actions/workflows/ci.yml)
 [![Docker](https://github.com/cloudapp3/vmlg/actions/workflows/docker.yml/badge.svg)](https://github.com/cloudapp3/vmlg/actions/workflows/docker.yml)
+[![Docs](https://img.shields.io/badge/docs-vmlg.bestcheapvps.org-0ea5e9)](https://vmlg.bestcheapvps.org)
+[![Telegram](https://img.shields.io/badge/Telegram-Community-26A5E4?logo=telegram)](https://t.me/VMPulse)
 [![Go Reference](https://pkg.go.dev/badge/github.com/cloudapp3/vmlg.svg)](https://pkg.go.dev/github.com/cloudapp3/vmlg)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
@@ -36,7 +38,7 @@
 - **Observability, MCP Server & Redacted Markdown Sharing**
   - Built-in Prometheus `/metrics` endpoint (with optional Bearer token auth).
   - Built-in `vmlg mcp` stdio JSON-RPC server (`vmlg_list_nodes`, `vmlg_ping`, `vmlg_mtr`, `vmlg_compare`, `vmlg_bgp_route`) for both local execution and remote `-hub-http` multi-node portals.
-  - Multi-language dark/light web UI (`English` default, with `简体中文`, `繁體中文`, `日本語`) and one-click **Redacted Forum Markdown** export (`203.0.113.x`).
+  - Multi-language dark/light web UI (`English` default, with `简体中文`, `繁體中文`, `日本語`), URL deep-linking (`?target=me&tab=compare&autorun=1`), embeddable `<iframe>` widget mode (`?embed=1`), and one-click **Markdown + Discuz! BBCode** redacted forum export.
 
 ---
 
@@ -154,6 +156,24 @@ vmlg mcp
 vmlg mcp -hub-http https://lg.example.com
 ```
 
+### 6. Shareable Deep-Links & Embeddable Review Widget
+
+Link directly to an auto-running test or embed a node card inside a VPS review blog or WHMCS page:
+
+```html
+<!-- Direct auto-run link for visitors -->
+https://lg.example.com/?tab=compare&target=me&autorun=1
+
+<!-- Compact embeddable widget -->
+<iframe
+  src="https://lg.example.com/?tab=diag&node=tyo-01&embed=1"
+  width="100%"
+  height="540"
+  style="border:0;border-radius:12px;overflow:hidden"
+  loading="lazy">
+</iframe>
+```
+
 ---
 
 ## Linux Unprivileged Socket Notes
@@ -199,6 +219,18 @@ make race
 make smoke
 make build
 ```
+
+## Related Projects (`vm*` Ecosystem)
+
+| Project | Description |
+| --- | --- |
+| [vmbench](https://github.com/cloudapp3/vmbench) | One-command VPS hardware, return-route, speed, streaming unlock & IP quality checkup suite |
+| [vminfo](https://github.com/cloudapp3/vminfo) | Cross-platform single-binary terminal system monitor, web dashboard & MCP server |
+| [vmflow](https://github.com/cloudapp3/vmflow) | Bounded-resource Layer 4 TCP/UDP port forwarding proxy & embeddable Go runtime |
+| [vmpulse](https://github.com/VPSMarket/vmpulse) | Self-hosted multi-host VPS monitoring, benchmarking & operations platform |
+| **vmlg** | Single-binary multi-node Network & BGP Looking Glass portal |
+
+Join the community discussion on Telegram: **[t.me/VMPulse](https://t.me/VMPulse)**
 
 ## License
 

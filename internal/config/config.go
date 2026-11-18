@@ -44,6 +44,12 @@ type ServerConfig struct {
 	CORSOrigins    []string `toml:"cors_origins"`
 	EnableMetrics  bool     `toml:"enable_metrics"`
 	MetricsToken   string   `toml:"metrics_token"`
+	RepoURL        string   `toml:"repo_url"`
+	CommunityURL   string   `toml:"community_url"`
+	CommunityLabel string   `toml:"community_label"`
+	BrandURL       string   `toml:"brand_url"`
+	BrandLabel     string   `toml:"brand_label"`
+	AllowEmbed     bool     `toml:"allow_embed"`
 }
 
 type NodeConfig struct {
@@ -141,12 +147,16 @@ func Default(mode string) Config {
 	return Config{
 		Mode: mode,
 		Server: ServerConfig{
-			Listen:        "0.0.0.0:8080",
-			Title:         "vmlg Looking Glass",
-			Subtitle:      "Multi-Node Network Diagnostics & Speedtest Portal",
-			DefaultLocale: "en-US",
-			CORSOrigins:   []string{"*"},
-			EnableMetrics: true,
+			Listen:         "0.0.0.0:8080",
+			Title:          "vmlg Looking Glass",
+			Subtitle:       "Multi-Node Network Diagnostics & Speedtest Portal",
+			DefaultLocale:  "en-US",
+			CORSOrigins:    []string{"*"},
+			EnableMetrics:  true,
+			RepoURL:        "https://github.com/cloudapp3/vmlg",
+			CommunityURL:   "https://t.me/VMPulse",
+			CommunityLabel: "Telegram",
+			AllowEmbed:     true,
 		},
 		Node: NodeConfig{
 			ID:       nodeID,
@@ -246,6 +256,26 @@ func (c *Config) ApplyEnv() {
 	}
 	if v := strings.TrimSpace(os.Getenv("VMLG_LOCALE")); v != "" {
 		c.Server.DefaultLocale = v
+	}
+	if v := strings.TrimSpace(os.Getenv("VMLG_REPO_URL")); v != "" {
+		c.Server.RepoURL = v
+	}
+	if v := strings.TrimSpace(os.Getenv("VMLG_COMMUNITY_URL")); v != "" {
+		c.Server.CommunityURL = v
+	}
+	if v := strings.TrimSpace(os.Getenv("VMLG_COMMUNITY_LABEL")); v != "" {
+		c.Server.CommunityLabel = v
+	}
+	if v := strings.TrimSpace(os.Getenv("VMLG_BRAND_URL")); v != "" {
+		c.Server.BrandURL = v
+	}
+	if v := strings.TrimSpace(os.Getenv("VMLG_BRAND_LABEL")); v != "" {
+		c.Server.BrandLabel = v
+	}
+	if v := strings.TrimSpace(os.Getenv("VMLG_ALLOW_EMBED")); v != "" {
+		if b, err := strconv.ParseBool(v); err == nil {
+			c.Server.AllowEmbed = b
+		}
 	}
 	if v := strings.TrimSpace(os.Getenv("VMLG_TRUSTED_PROXIES")); v != "" {
 		c.Server.TrustedProxies = splitCSV(v)

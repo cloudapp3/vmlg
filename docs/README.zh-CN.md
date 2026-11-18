@@ -2,6 +2,8 @@
 
 [![CI](https://github.com/cloudapp3/vmlg/actions/workflows/ci.yml/badge.svg)](https://github.com/cloudapp3/vmlg/actions/workflows/ci.yml)
 [![Docker](https://github.com/cloudapp3/vmlg/actions/workflows/docker.yml/badge.svg)](https://github.com/cloudapp3/vmlg/actions/workflows/docker.yml)
+[![Docs](https://img.shields.io/badge/docs-vmlg.bestcheapvps.org-0ea5e9)](https://vmlg.bestcheapvps.org/zh/)
+[![Telegram](https://img.shields.io/badge/Telegram-交流群-26A5E4?logo=telegram)](https://t.me/VMPulse)
 [![Go Reference](https://pkg.go.dev/badge/github.com/cloudapp3/vmlg.svg)](https://pkg.go.dev/github.com/cloudapp3/vmlg)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](../LICENSE)
 
@@ -113,6 +115,18 @@ VMLG_AGENT_TOKEN="replace-with-strong-token" \
 vmlg mcp
 vmlg mcp -hub-http https://lg.example.com
 ```
+
+## 相关生态项目（`vm*` 工具矩阵）
+
+| 项目 | 简介 |
+| --- | --- |
+| [vmbench](https://github.com/cloudapp3/vmbench) | 新 VPS 一键体检工具（硬件跑分、三网回程识别、流媒体解锁、IP 质量） |
+| [vminfo](https://github.com/cloudapp3/vminfo) | 跨平台单二进制终端系统监控、Web 仪表盘与 MCP Server |
+| [vmflow](https://github.com/cloudapp3/vmflow) | 资源受控的四层 TCP/UDP 端口转发与可嵌入 Go 网络运行时 |
+| [vmpulse](https://github.com/VPSMarket/vmpulse) | 自托管多主机实时监控、测评与远程运维控制平台 |
+| **vmlg** | 单二进制多节点网络测速与 BGP Looking Glass 门户 |
+
+Telegram 社区交流群：**[t.me/VMPulse](https://t.me/VMPulse)**
 
 ## 开源协议
 

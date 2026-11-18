@@ -335,6 +335,31 @@ async function loadMeta(preserveSelection = false) {
     document.getElementById('portal-mode').textContent = (meta.mode || 'standalone').toUpperCase();
     document.getElementById('footer-version').textContent = meta.version ? `v${meta.version}` : '';
 
+    // Populate footer attribution & community links
+    const links = meta.links || {};
+    const repoLink = document.getElementById('footer-repo-link');
+    if (repoLink && links.repo_url) {
+        repoLink.href = links.repo_url;
+    }
+    const commWrap = document.getElementById('footer-community-wrap');
+    const commLink = document.getElementById('footer-community-link');
+    if (commWrap && commLink) {
+        if (links.community_url) {
+            commLink.href = links.community_url;
+            commLink.textContent = links.community_label || 'Community';
+            commWrap.hidden = false;
+        } else {
+            commWrap.hidden = true;
+        }
+    }
+    const brandWrap = document.getElementById('footer-brand-wrap');
+    const brandLink = document.getElementById('footer-brand-link');
+    if (brandWrap && brandLink && links.brand_url) {
+        brandLink.href = links.brand_url;
+        brandLink.textContent = links.brand_label || meta.title || 'Home';
+        brandWrap.hidden = false;
+    }
+
     if (meta.visitor && meta.visitor.ip) {
         document.getElementById('visitor-ip').textContent = meta.visitor.ip;
         const asnEl = document.getElementById('visitor-asn');
@@ -355,8 +380,87 @@ async function loadMeta(preserveSelection = false) {
     }
 
     applyLocale();
+    if (!preserveSelection) {
+        applyInitialURLParams();
+    }
     renderNodes();
     syncSelectedNodeUI();
+}
+
+function applyInitialURLParams() {
+    const qs = new URLSearchParams(window.location.search);
+    if (qs.get('embed') === '1') {
+        document.body.classList.add('embed-mode');
+        const fullWrap = document.getElementById('footer-open-full-wrap');
+        const fullLink = document.getElementById('footer-open-full');
+        if (fullWrap && fullLink) {
+            const cleanQS = new URLSearchParams(window.location.search);
+            cleanQS.delete('embed');
+            const query = cleanQS.toString();
+            fullLink.href = window.location.pathname + (query ? `?${query}` : '');
+            fullWrap.hidden = false;
+        }
+    }
+
+    const qNode = qs.get('node');
+    if (qNode && state.nodes.some((n) => n.id === qNode)) {
+        state.selectedNodeId = qNode;
+    }
+    const qTab = qs.get('tab');
+    if (qTab && ['compare', 'diag', 'speed', 'bgp', 'share'].includes(qTab)) {
+        switchTab(qTab);
+    }
+    const qIPVer = qs.get('ip_version');
+    if (qIPVer && ['auto', 'v4', 'v6'].includes(qIPVer)) {
+        document.getElementById('ipver-select').value = qIPVer;
+    }
+    const qTool = qs.get('tool');
+    if (qTool && ['mtr', 'icmp', 'tcp'].includes(qTool)) {
+        document.getElementById('diag-tool-select').value = qTool;
+    }
+    const qTarget = qs.get('target');
+    if (qTarget) {
+        if (qTarget === 'me' && state.meta && state.meta.visitor && state.meta.visitor.ip) {
+            document.getElementById('target-input').value = state.meta.visitor.ip;
+        } else {
+            document.getElementById('target-input').value = qTarget;
+        }
+    }
+
+    if (qs.get('autorun') === '1') {
+        setTimeout(() => {
+            const target = document.getElementById('target-input').value.trim();
+            if (target && (state.activeTab === 'compare' || state.activeTab === 'diag' || state.activeTab === 'bgp')) {
+                document.getElementById('probe-form').requestSubmit();
+            }
+        }, 80);
+    }
+}
+
+function buildDeepLinkURL(includeEmbed = false) {
+    const u = new URL(window.location.origin + window.location.pathname);
+    u.searchParams.set('tab', state.activeTab);
+    if (state.selectedNodeId) {
+        u.searchParams.set('node', state.selectedNodeId);
+    }
+    const target = document.getElementById('target-input').value.trim();
+    if (target && (state.activeTab === 'compare' || state.activeTab === 'diag' || state.activeTab === 'bgp')) {
+        const visitorIP = state.meta && state.meta.visitor && state.meta.visitor.ip;
+        u.searchParams.set('target', target === visitorIP ? 'me' : target);
+        u.searchParams.set('autorun', '1');
+    }
+    const ipVer = document.getElementById('ipver-select').value;
+    if (ipVer && ipVer !== 'auto') {
+        u.searchParams.set('ip_version', ipVer);
+    }
+    if (state.activeTab === 'diag') {
+        u.searchParams.set('tool', document.getElementById('diag-tool-select').value);
+    }
+    if (includeEmbed) {
+        u.searchParams.set('embed', '1');
+        u.searchParams.delete('autorun');
+    }
+    return u.toString();
 }
 
 function renderNodes() {
@@ -1253,12 +1357,22 @@ function renderBGPPeers(data) {
     }).join('');
 }
 
-// Share Markdown Builder
+// Share Markdown & BBCode Builder
 function renderShareMarkdown() {
+    const fmtEl = document.getElementById('share-format-select');
+    const format = fmtEl ? fmtEl.value : 'markdown';
     const redact = document.getElementById('share-redact-toggle').checked;
     const fmtTarget = (raw) => (redact ? redactIP(raw) : raw);
-    const lines = [];
+    const repoURL = (state.meta && state.meta.links && state.meta.links.repo_url) || 'https://github.com/cloudapp3/vmlg';
     const title = (state.meta && state.meta.title) || 'vmlg Looking Glass';
+    const cmpItems = Object.values(state.compareResults).filter((x) => x.ping || x.mtr);
+
+    if (format === 'bbcode') {
+        document.getElementById('share-markdown-box').value = buildBBCodeReport(title, repoURL, fmtTarget, redact, cmpItems);
+        return;
+    }
+
+    const lines = [];
     lines.push(`### ${title} - Network Diagnostic Report`);
     lines.push(`- Generated: \`${new Date().toISOString()}\``);
     if (state.lastTarget) {
@@ -1266,7 +1380,6 @@ function renderShareMarkdown() {
     }
     lines.push('');
 
-    const cmpItems = Object.values(state.compareResults).filter((x) => x.ping || x.mtr);
     if (cmpItems.length > 0) {
         lines.push('#### Multi-Node Latency & Return Route');
         lines.push('| Node | Region | Return Route | Avg RTT | Min / Max | Loss |');
@@ -1324,10 +1437,60 @@ function renderShareMarkdown() {
     }
 
     if (cmpItems.length === 0 && !state.lastMTR && !state.lastPing && !state.lastSpeed && !state.lastBGP) {
-        lines.push('_Run a Multi-Node Compare, MTR, Ping, or Speedtest first to populate this report._');
+        lines.push('_Run a Multi-Node Compare, MTR, Ping, BGP Lookup, or Speedtest first to populate this report._');
+        lines.push('');
     }
 
+    lines.push(`> Generated by [vmlg Looking Glass](${repoURL}) — Single-Binary Multi-Node Network & BGP Diagnostics`);
     document.getElementById('share-markdown-box').value = lines.join('\n');
+}
+
+function buildBBCodeReport(title, repoURL, fmtTarget, redact, cmpItems) {
+    const lines = [];
+    lines.push(`[b][size=4]${title} - Network Diagnostic Report[/size][/b]`);
+    lines.push(`Generated: [font=monospace]${new Date().toISOString()}[/font]`);
+    if (state.lastTarget) {
+        lines.push(`Target: [font=monospace]${fmtTarget(state.lastTarget)}[/font]`);
+    }
+    lines.push('');
+
+    if (cmpItems.length > 0) {
+        lines.push('[b]Multi-Node Latency & Return Route[/b]');
+        lines.push('[table]');
+        lines.push('[tr][td][b]Node[/b][/td][td][b]Region[/b][/td][td][b]Return Route[/b][/td][td][b]Avg RTT[/b][/td][td][b]Loss[/b][/td][/tr]');
+        cmpItems.forEach((it) => {
+            const route = (it.mtr && it.mtr.route && it.mtr.route.label) || '—';
+            const avg = it.ping && it.ping.recv > 0 ? `${it.ping.avg_ms.toFixed(1)} ms` : 'Timeout';
+            const loss = it.ping ? `${it.ping.loss_pct.toFixed(0)}%` : '—';
+            lines.push(`[tr][td]${it.node.name}[/td][td]${it.node.region || '—'}[/td][td][b]${route}[/b][/td][td]${avg}[/td][td]${loss}[/td][/tr]`);
+        });
+        lines.push('[/table]');
+        lines.push('');
+    }
+
+    if (state.lastMTR && state.lastMTR.snap) {
+        const { node, snap } = state.lastMTR;
+        lines.push(`[b]MTR Trace from ${node.name} (${snap.route ? snap.route.label : 'Direct'})[/b]`);
+        lines.push('[code]');
+        (snap.hops || []).forEach((h, idx, arr) => {
+            const isLast = idx === arr.length - 1;
+            const ipDisp = (h.addr ? (isLast && redact ? redactIP(h.addr) : h.addr) : '*').padEnd(18, ' ');
+            const tag = ([h.ixp || h.line_tag, h.asn].filter(Boolean).join(' ') || '-').padEnd(18, ' ');
+            const avg = h.recv > 0 ? `${h.avg_ms.toFixed(1)}ms` : 'timeout';
+            lines.push(`${String(h.hop).padStart(2, ' ')}. ${ipDisp} ${tag} loss=${h.loss_pct.toFixed(0)}% avg=${avg}`);
+        });
+        lines.push('[/code]');
+        lines.push('');
+    }
+
+    if (state.lastSpeed) {
+        const s = state.lastSpeed;
+        lines.push(`[b]HTML5 Speedtest (${s.node.name})[/b]: Download [b]${s.dlMbps} Mbps[/b] · Upload [b]${s.ulMbps} Mbps[/b] · Ping ${s.pingMs} ms (Jitter ${s.jitterMs} ms)`);
+        lines.push('');
+    }
+
+    lines.push(`[quote]Generated by [url=${repoURL}][b]vmlg Looking Glass[/b][/url] — Single-Binary Multi-Node Network & BGP Portal[/quote]`);
+    return lines.join('\n');
 }
 
 async function copyText(text, btn) {
@@ -1409,8 +1572,17 @@ function bindEvents() {
     });
 
     document.getElementById('share-redact-toggle').addEventListener('change', renderShareMarkdown);
+    document.getElementById('share-format-select').addEventListener('change', renderShareMarkdown);
     document.getElementById('btn-copy-markdown').addEventListener('click', (e) => {
         copyText(document.getElementById('share-markdown-box').value, e.currentTarget);
+    });
+    document.getElementById('btn-copy-deeplink').addEventListener('click', (e) => {
+        copyText(buildDeepLinkURL(false), e.currentTarget);
+    });
+    document.getElementById('btn-copy-embed').addEventListener('click', (e) => {
+        const embedURL = buildDeepLinkURL(true);
+        const snippet = `<iframe src="${embedURL}" width="100%" height="540" style="border:0;border-radius:12px;overflow:hidden" loading="lazy"></iframe>`;
+        copyText(snippet, e.currentTarget);
     });
 }
 

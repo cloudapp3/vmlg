@@ -120,7 +120,7 @@ func New(cfg config.Config, logger *slog.Logger) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	s.handler = withSecurityHeaders(mux)
+	s.handler = withSecurityHeaders(mux, cfg.Server.AllowEmbed)
 	return s, nil
 }
 
@@ -211,7 +211,15 @@ func (s *Server) handleMeta(w http.ResponseWriter, r *http.Request) {
 		"mode":           s.cfg.Mode,
 		"default_locale": s.cfg.Server.DefaultLocale,
 		"version":        version.Version,
-		"visitor":        visitor,
+		"allow_embed":    s.cfg.Server.AllowEmbed,
+		"links": map[string]string{
+			"repo_url":        s.cfg.Server.RepoURL,
+			"community_url":   s.cfg.Server.CommunityURL,
+			"community_label": s.cfg.Server.CommunityLabel,
+			"brand_url":       s.cfg.Server.BrandURL,
+			"brand_label":     s.cfg.Server.BrandLabel,
+		},
+		"visitor": visitor,
 		"defaults": map[string]any{
 			"ping_count":     s.cfg.Probe.PingDefaultCount,
 			"ping_max_count": s.cfg.Probe.PingMaxCount,
@@ -650,11 +658,13 @@ func clampInt(raw string, def, low, high int) int {
 	return min(max(v, low), high)
 }
 
-func withSecurityHeaders(next http.Handler) http.Handler {
+func withSecurityHeaders(next http.Handler, allowEmbed bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
-		w.Header().Set("X-Frame-Options", "SAMEORIGIN")
-		w.Header().Set("Referrer-Policy", "no-referrer")
+		if !allowEmbed || r.URL.Query().Get("embed") != "1" {
+			w.Header().Set("X-Frame-Options", "SAMEORIGIN")
+		}
+		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
 		next.ServeHTTP(w, r)
 	})
 }
