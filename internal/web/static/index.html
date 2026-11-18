@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN" data-theme="dark">
+<html lang="en" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -28,14 +28,19 @@
 
             <div class="topbar-controls">
                 <div class="visitor-pill" id="visitor-pill" title="Click to fill your IP into target box">
-                    <span class="visitor-label" data-i18n="your_ip">你的 IP</span>
+                    <span class="visitor-label" data-i18n="your_ip">Your IP</span>
                     <code class="visitor-ip" id="visitor-ip">...</code>
                     <span class="line-badge subtle" id="visitor-asn" hidden></span>
-                    <button type="button" class="btn-mini" id="btn-use-my-ip" data-i18n="probe_me">测我本机</button>
+                    <button type="button" class="btn-mini" id="btn-use-my-ip" data-i18n="probe_me">Probe My IP</button>
                 </div>
 
                 <div class="toolbar-btns">
-                    <button type="button" class="icon-btn" id="btn-lang" title="Switch Language">EN</button>
+                    <select id="lang-select" aria-label="Language" style="padding:5px 8px;font-size:12px">
+                        <option value="en-US">English</option>
+                        <option value="zh-CN">简体中文</option>
+                        <option value="zh-TW">繁體中文</option>
+                        <option value="ja-JP">日本語</option>
+                    </select>
                     <button type="button" class="icon-btn" id="btn-theme" title="Toggle Theme">◐</button>
                 </div>
             </div>
@@ -47,28 +52,28 @@
         <section class="card">
             <div class="card-header">
                 <div class="card-title-wrap">
-                    <h2 class="card-title" data-i18n="nodes_title">可用测试节点</h2>
+                    <h2 class="card-title" data-i18n="nodes_title">Available Looking Glass Nodes</h2>
                     <span class="pill-count" id="nodes-online-count">0 / 0</span>
                 </div>
-                <button type="button" class="btn-ghost btn-sm" id="btn-refresh-nodes" data-i18n="refresh">刷新状态</button>
+                <button type="button" class="btn-ghost btn-sm" id="btn-refresh-nodes" data-i18n="refresh">Refresh</button>
             </div>
             <div class="node-grid" id="node-grid"></div>
         </section>
 
         <!-- Navigation Tabs -->
         <nav class="tabs" role="tablist">
-            <button type="button" class="tab active" data-tab="compare" data-i18n="tab_compare">⚡ 多节点同屏横评</button>
-            <button type="button" class="tab" data-tab="diag" data-i18n="tab_diag">🧭 路由追踪 &amp; Ping</button>
-            <button type="button" class="tab" data-tab="speed" data-i18n="tab_speed">🚀 带宽测速 &amp; iPerf3</button>
-            <button type="button" class="tab" data-tab="bgp" id="tab-btn-bgp" data-i18n="tab_bgp">🌐 BGP 路由 &amp; 拓扑</button>
-            <button type="button" class="tab" data-tab="share" data-i18n="tab_share">📋 脱敏报告导出</button>
+            <button type="button" class="tab active" data-tab="compare" data-i18n="tab_compare">⚡ Multi-Node Compare</button>
+            <button type="button" class="tab" data-tab="diag" data-i18n="tab_diag">🧭 Live MTR &amp; Ping</button>
+            <button type="button" class="tab" data-tab="speed" data-i18n="tab_speed">🚀 Speedtest &amp; iPerf3</button>
+            <button type="button" class="tab" data-tab="bgp" id="tab-btn-bgp" data-i18n="tab_bgp">🌐 BGP &amp; AS-Path</button>
+            <button type="button" class="tab" data-tab="share" data-i18n="tab_share">📋 Share Markdown</button>
         </nav>
 
         <!-- Shared Target Input Bar (Visible on Compare & Diag tabs) -->
         <section class="card target-bar" id="target-bar">
             <form id="probe-form" class="probe-form">
                 <div class="input-group grow">
-                    <label for="target-input" data-i18n="target_label">目标 IP 或域名</label>
+                    <label for="target-input" data-i18n="target_label">Target IP or Hostname</label>
                     <div class="input-with-chips">
                         <input type="text" id="target-input" placeholder="e.g. 1.1.1.1, 8.8.8.8, cloudflare.com" autocomplete="off" spellcheck="false" required>
                         <div class="preset-chips">
@@ -80,7 +85,7 @@
                 </div>
 
                 <div class="input-group">
-                    <label for="ipver-select" data-i18n="ip_version">协议栈</label>
+                    <label for="ipver-select" data-i18n="ip_version">IP Stack</label>
                     <select id="ipver-select">
                         <option value="auto">Auto</option>
                         <option value="v4">IPv4</option>
@@ -89,7 +94,7 @@
                 </div>
 
                 <div class="input-group" id="diag-tool-group" hidden>
-                    <label for="diag-tool-select" data-i18n="diag_tool">诊断工具</label>
+                    <label for="diag-tool-select" data-i18n="diag_tool">Diagnostic Tool</label>
                     <select id="diag-tool-select">
                         <option value="mtr">Live MTR (Route + Loss)</option>
                         <option value="icmp">ICMP Ping</option>
@@ -98,8 +103,8 @@
                 </div>
 
                 <div class="form-actions">
-                    <button type="submit" class="btn-primary" id="btn-run-probe" data-i18n="start_test">开始测试</button>
-                    <button type="button" class="btn-danger" id="btn-stop-probe" hidden data-i18n="stop_test">停止</button>
+                    <button type="submit" class="btn-primary" id="btn-run-probe" data-i18n="start_test">Run Probe</button>
+                    <button type="button" class="btn-danger" id="btn-stop-probe" hidden data-i18n="stop_test">Stop</button>
                 </div>
             </form>
             <div class="error-banner" id="probe-error" hidden></div>

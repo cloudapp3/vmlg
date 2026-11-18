@@ -4,7 +4,7 @@ mode = "hub"
 listen = "0.0.0.0:8080"
 title = "Global Cloud Looking Glass"
 subtitle = "Multi-Region Latency, Return Route & Speedtest Portal"
-default_locale = "zh-CN"
+default_locale = "en-US"
 trusted_proxies = ["127.0.0.1/32", "::1/128"]
 
 [node]

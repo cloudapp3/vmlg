@@ -1,61 +1,64 @@
-# vmlg — 单二进制多节点网络 Looking Glass
+# vmlg — Modern Single-Binary Multi-Node Network & BGP Looking Glass
 
 [![CI](https://github.com/cloudapp3/vmlg/actions/workflows/ci.yml/badge.svg)](https://github.com/cloudapp3/vmlg/actions/workflows/ci.yml)
+[![Docker](https://github.com/cloudapp3/vmlg/actions/workflows/docker.yml/badge.svg)](https://github.com/cloudapp3/vmlg/actions/workflows/docker.yml)
 [![Go Reference](https://pkg.go.dev/badge/github.com/cloudapp3/vmlg.svg)](https://pkg.go.dev/github.com/cloudapp3/vmlg)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-**vmlg** 是一个使用纯 Go 编写、零前端构建依赖的现代网络 Looking Glass 门户。单个 `CGO_ENABLED=0` 静态二进制文件同时内嵌响应式 Web UI、单机服务（`standalone`）、多节点聚合中心（`hub`）与轻量节点探针（`agent`），无需任何外部数据库或 Redis。
+**English** · [简体中文](docs/README.zh-CN.md) · [繁體中文](docs/README.zh-TW.md) · [日本語](docs/README.ja.md) · [Deutsch](docs/README.de.md) · [Русский](docs/README.ru.md)
 
-English Documentation: [docs/README.en.md](docs/README.en.md)
-
----
-
-## 核心特性
-
-- **单二进制双模架构（Standalone + Hub/Agent）**
-  - 单台 VPS 一条命令即开即用：`vmlg serve --listen :8080`
-  - 多地域机房通过 `vmlg agent` 主动建立反向 WebSocket 长连接注册至 `vmlg hub`，Agent 即使位于 NAT 后或无独立管理域名也能接入诊断控制面。
-- **多节点同屏并发横评（买家选机房利器）**
-  - 自动识别访客公网 IP 与运营商属性，点击一次「测我本机」，所有在线节点并发探测到访客 IP 的延迟、抖动、丢包率及回程路由，按延迟实时排序同屏展示。
-- **实时流式 MTR / Ping + 精品骨干网与 IXP 识别**
-  - 基于 SSE（Server-Sent Events）实时流式推送，自动设置 `X-Accel-Buffering: no` 穿透 Nginx / CDN 反代缓冲。
-  - 原生支持 `ICMP` / `TCP` Ping 与多轮次实时 MTR，并在无 `CAP_NET_RAW` 的受限容器（如 Rootless Docker）中自动降级至 Linux 内核 `IP_RECVERR`（`MSG_ERRQUEUE`）无特权路由追踪引擎。
-  - 内置离线前缀与 ASN/rDNS 识别规则，自动标记 **`CN2 GIA` / `CN2 GT` / `CU 9929` / `CU 10099` / `CMIN2` / `CT 163` / `CU 4837` / `CMI` / `IIJ` / `SoftBank`** 及 **`HKIX` / `DE-CIX` / `AMS-IX` / `Equinix` / `JPIX`** 等交换中心跳点。
-- **零磁盘占用流式测速包 + HTML5 交互测速 + 受控 iPerf3 租约池**
-  - `/speedtest/files/{10MB,100MB,1GB}.bin` 由内存预置的 `ChaCha8` 伪随机不可压缩数据块实时流式输出，**磁盘占用为 0**，杜绝透明压缩作弊，并支持单流带宽上限流控。
-  - 内置多线程 HTML5 下载 / 上传（服务端黑洞丢弃零内存膨胀）/ Ping / Jitter 交互测速图表。
-  - **iPerf3 临时端口租约池**：按需从端口池（如 `5201-5210`）分配独占端口启动单次超时回收的 `iperf3 -s -1` 子进程，彻底避免固定公网 iPerf3 端口被长期打满。
-- **默认防滥用安全护栏（Guard）**
-  - **零 Shell 拼接**：所有探测参数经 `net/netip` 与 RFC 1123 严格校验，杜绝命令注入。
-  - **SSRF 与 DNS 重绑定防御**：默认拦截环回、RFC1918 私网、CGNAT、链路本地及云元数据地址 `169.254.169.254`（DN42 等场景可通过 `allowed_reserved_cidrs` 显式放行）。
-  - **双维度令牌桶限流（Per-Client + Per-Target）**：同时限制单访客请求速率与**发往同一目标 `/24`（IPv6 `/48`）网段**的全局探测速率，防止多节点沦为针对单一受害者的反射放大器。
-- **可插拔 BGP 路由表与纯 SVG AS-Path 拓扑图**
-  - 按需开启只读 BGP 驱动：支持 **BIRD 2/3**（原生直连 `/run/bird/bird.ctl` Unix Socket + `restrict` 只读锁定，零 fork 开销）、**FRRouting**（`vtysh json`）、**GoBGP** 及演示 `mock` 模式。
-  - 前端零 Graphviz 依赖渲染 **纯 SVG AS-Path 拓扑有向图**，支持 Best/Backup 多路径对比、Standard / Large Communities 自定义字典解码与邻居会话（Peers）状态总览。
-- **可观测性与 AI 诊断生态（Prometheus + MCP Server）**
-  - 原生内置 `/metrics` Prometheus 指标接口（支持可选 Bearer Token 鉴权）。
-  - 内置 `vmlg mcp` Stdio JSON-RPC 服务，既可本地直连运行，也可通过 `-hub-http` 远程连接多机房 Hub 供大模型客户端调用（`vmlg_list_nodes` / `vmlg_ping` / `vmlg_mtr` / `vmlg_compare` / `vmlg_bgp_route`）。
-- **中英双语 + 暗色/亮色主题 + 论坛脱敏 Markdown 一键导出**
-  - 一键生成适合贴入论坛 / GitHub Issue 的结构化 Markdown 报告，默认自动掩码目标公网 IP 末段（如 `203.0.113.x`）。
+**vmlg** is a self-hosted, pure-Go (`CGO_ENABLED=0`), zero-Node-build Network and BGP Looking Glass portal designed for VPS providers, IXPs, AS operators, DN42 networks, and multi-region homelabs. One static ~8.6 MB binary embeds a modern multi-language web UI, a single-node server (`standalone`), a central portal (`hub`), a lightweight regional daemon (`agent`), and an AI-ready `stdio` MCP server—with zero external database or Redis required.
 
 ---
 
-## 快速开始
+## Key Features
 
-### 1. 安装与构建
+- **Single Binary, Dual-Mode Architecture (`standalone` + `hub`/`agent`)**
+  - **Standalone**: Run on a single host with zero configuration (`vmlg serve -listen :8080`).
+  - **Hub + Agent**: Regional agents connect outbound over a multiplexed WebSocket tunnel (`ws://` / `wss://`) to a central Hub, working seamlessly behind NAT or firewalls without requiring public management ports on every node.
+- **One-Click Multi-Node Latency & Return-Route Comparison**
+  - Automatically detects the visitor's public IP and ASN. With a single click on **Probe My IP**, all online regional nodes concurrently measure RTT, jitter, packet loss, and return-route hops to the visitor, sorting datacenters by live latency in one unified view.
+- **Streaming MTR & Ping with Carrier Backbone & IXP Enrichment**
+  - Real-time Server-Sent Events (SSE) streaming with automatic `X-Accel-Buffering: no` headers to bypass reverse-proxy buffering.
+  - Native Go `ICMPv4/v6` and `TCP` Ping plus multi-cycle live MTR; automatically falls back to unprivileged Linux kernel `IP_RECVERR` (`MSG_ERRQUEUE`) hop tracing inside rootless containers lacking `CAP_NET_RAW`.
+  - Built-in offline prefix, ASN, and rDNS classification for **`CN2 GIA` / `CN2 GT` / `CU 9929` / `CU 10099` / `CMIN2` / `CT 163` / `CU 4837` / `CMI` / `IIJ` / `SoftBank` / `NTT`** and major Internet Exchanges (**`HKIX` / `DE-CIX` / `AMS-IX` / `LINX` / `Equinix` / `JPIX` / `Any2IX`**).
+- **Zero-Disk Speedtest Streams, HTML5 Benchmark & Ephemeral iPerf3 Leases**
+  - `/speedtest/files/{10MB,100MB,1GB}.bin` streams incompressible `ChaCha8` pseudo-random blocks directly from memory with **0 bytes of disk footprint** and optional per-stream bandwidth throttling.
+  - Built-in multi-stream HTML5 Download, Upload (zero-allocation discard sink), Ping, and Jitter benchmark with live throughput charts.
+  - **Controlled iPerf3 Port Lease Pool**: Dynamically allocates an isolated port (e.g., `5201-5210`) running a one-shot `iperf3 -s -1` subprocess with strict TTL auto-reclamation, preventing public `iperf3` servers from being permanently saturated.
+- **Pluggable Read-Only BGP RIB & Pure SVG AS-Path Topology**
+  - Optional read-only drivers for **BIRD 2/3** (native `/run/bird/bird.ctl` Unix socket speaking `restrict` mode with zero process fork), **FRRouting** (`vtysh` JSON), **GoBGP**, and demo `mock` mode.
+  - Client-side **pure SVG AS-Path directed topology graph** (zero Graphviz dependency on the server), Standard/Large BGP Community semantic decoding, and BGP neighbor session summaries.
+- **Hardened Anti-Abuse Security Guard**
+  - **Zero Shell Execution**: Every input is strictly parsed via `net/netip` and RFC 1123 hostname rules.
+  - **SSRF & DNS-Rebinding Protection**: Blocks loopback, RFC1918 private, CGNAT, link-local, and cloud metadata (`169.254.169.254`) targets across all resolved DNS records (customizable via `allowed_reserved_cidrs` for DN42).
+  - **Dual-Dimension Token Buckets (`Per-Client` + `Per-Target`)**: Rate-limits both individual client IPs (`/64` for IPv6) and **destination `/24` (IPv4) / `/48` (IPv6) subnets** globally—preventing distributed DDoS reflection/amplification against a single victim.
+- **Observability, MCP Server & Redacted Markdown Sharing**
+  - Built-in Prometheus `/metrics` endpoint (with optional Bearer token auth).
+  - Built-in `vmlg mcp` stdio JSON-RPC server (`vmlg_list_nodes`, `vmlg_ping`, `vmlg_mtr`, `vmlg_compare`, `vmlg_bgp_route`) for both local execution and remote `-hub-http` multi-node portals.
+  - Multi-language dark/light web UI (`English` default, with `简体中文`, `繁體中文`, `日本語`) and one-click **Redacted Forum Markdown** export (`203.0.113.x`).
+
+---
+
+## Quick Start
+
+### 1. Install or Build Binary
 
 ```bash
-# 直接通过 Go 工具链安装（零 Node.js / CGO 依赖）
+# Install via one-line release script (verifies SHA-256 checksum)
+curl -fsSL https://raw.githubusercontent.com/cloudapp3/vmlg/main/install.sh | bash
+
+# Or install with Go toolchain (zero Node.js or CGO dependencies)
 go install github.com/cloudapp3/vmlg/cmd/vmlg@latest
 
-# 或从源码编译静态二进制
+# Or build static binary from source
 make build
 ```
 
-### 2. 单机模式（Standalone，零配置即跑）
+### 2. Standalone Mode (Single Node, Zero Config)
 
 ```bash
-./vmlg serve \
+vmlg serve \
   -listen 0.0.0.0:8080 \
   -node-id tyo-01 \
   -node-name "Tokyo · BGP Premium" \
@@ -63,15 +66,15 @@ make build
   -region "APAC"
 ```
 
-浏览器访问 `http://127.0.0.1:8080` 即可使用。完整配置可参考 [examples/standalone.toml](examples/standalone.toml)。
+Open `http://127.0.0.1:8080` in your browser. See [examples/standalone.toml](examples/standalone.toml) for full TOML configuration options.
 
-### 3. 多机房集群模式（Hub + Agent）
+### 3. Multi-Node Cluster Mode (`hub` + `agent`)
 
-**在门户节点启动 Hub：**
+**Start the central Hub portal:**
 
 ```bash
 export VMLG_AGENT_TOKEN="replace-with-strong-random-token"
-./vmlg hub \
+vmlg hub \
   -listen 0.0.0.0:8080 \
   -title "Global Cloud Looking Glass" \
   -enable-local-node \
@@ -80,11 +83,11 @@ export VMLG_AGENT_TOKEN="replace-with-strong-random-token"
   -region "APAC"
 ```
 
-**在各地域 VPS 节点启动 Agent：**
+**Connect regional Agent nodes:**
 
 ```bash
 export VMLG_AGENT_TOKEN="replace-with-strong-random-token"
-./vmlg agent \
+vmlg agent \
   -hub-url ws://hub.example.com:8080/api/v1/cluster/ws \
   -node-id lax-01 \
   -node-name "Los Angeles · CN2 GIA" \
@@ -95,23 +98,23 @@ export VMLG_AGENT_TOKEN="replace-with-strong-random-token"
   -public-url https://lax-speed.example.com
 ```
 
-完整多节点配置示例见 [examples/hub.toml](examples/hub.toml) 与 [examples/agent.toml](examples/agent.toml)，上线前可执行校验：
+Validate any configuration file before deployment:
 
 ```bash
-./vmlg check -config ./examples/standalone.toml
+vmlg check -config ./examples/standalone.toml
 ```
 
-### 4. Docker 与 Docker Compose 部署
+### 4. Docker & Docker Compose Deployment
 
-官方多架构镜像（`linux/amd64`、`linux/arm64`）自动发布至 `ghcr.io/cloudapp3/vmlg:latest`，镜像内已预装 `iperf3` 并以非特权用户（UID `10001`）运行。
+Official multi-arch images (`linux/amd64`, `linux/arm64`) are published to `ghcr.io/cloudapp3/vmlg:latest` with `iperf3` pre-installed and running as non-root UID `10001`.
 
-**方式 A：Docker Compose 一键单机部署**
+**Option A: Docker Compose (Standalone)**
 
 ```bash
 docker compose up -d
 ```
 
-**方式 B：`docker run` 纯环境变量启动（单机模式）**
+**Option B: Single `docker run` Command (Environment Variables)**
 
 ```bash
 docker run -d \
@@ -130,65 +133,64 @@ docker run -d \
   ghcr.io/cloudapp3/vmlg:latest
 ```
 
-> **提示**：如需探测宿主机原生 IPv6 路由或挂载宿主机 BIRD Socket，可改用 `--network host` 并附加 `-v /run/bird/bird.ctl:/run/bird/bird.ctl:ro -e VMLG_BGP_DRIVER=bird`。
+> **Tip**: To probe native host IPv6 routes or mount the host's BIRD Unix socket, use `--network host` and add `-v /run/bird/bird.ctl:/run/bird/bird.ctl:ro -e VMLG_BGP_DRIVER=bird`.
 
-**方式 C：多节点 Hub + Agent 容器化编排**
+**Option C: Multi-Node Hub + Agent Compose Stack**
 
-见 [docker-compose.cluster.yml](docker-compose.cluster.yml)（支持环境变量与 `*_FILE` Docker Secrets 注入，例如 `VMLG_AGENT_TOKEN_FILE`）：
+See [docker-compose.cluster.yml](docker-compose.cluster.yml) (supports environment variables as well as Docker Secrets via `*_FILE`, such as `VMLG_AGENT_TOKEN_FILE`):
 
 ```bash
-# 启动中心门户 Hub（含本地节点）与测试 Agent
 VMLG_AGENT_TOKEN="replace-with-strong-token" \
   docker compose -f docker-compose.cluster.yml --profile agent up -d
 ```
 
-### 5. MCP Server（AI 辅助多节点网络排障）
+### 5. MCP Server (AI-Assisted Network Diagnostics)
 
 ```bash
-# 本地单机诊断模式（无需监听端口）
+# Local standalone diagnostics over stdio (no listening port required)
 vmlg mcp
 
-# 远程连接已部署的多节点 Hub 门户
+# Connect to a deployed multi-region Hub portal
 vmlg mcp -hub-http https://lg.example.com
 ```
 
 ---
 
-## Linux 非特权运行建议
+## Linux Unprivileged Socket Notes
 
-`vmlg` 在无特权容器环境下已内置内核 `IP_RECVERR` 路由追踪与无特权连接探测回退；在生产裸机或虚拟机以普通用户运行 systemd 服务时，赋予 `CAP_NET_RAW` 或开启 `ping_group_range` 可启用纯正原生 ICMP 收发引擎：
+`vmlg` automatically falls back to Linux `IP_RECVERR` (`MSG_ERRQUEUE`) hop tracing when `CAP_NET_RAW` is unavailable. On bare-metal or VM systemd deployments running under an unprivileged service account, grant raw or datagram ICMP access for native ICMP probing:
 
 ```bash
-# 方式 A：允许二进制使用原生 ICMP 套接字
+# Option A: Grant CAP_NET_RAW to the binary
 sudo setcap cap_net_raw+ep /usr/local/bin/vmlg
 
-# 方式 B：开启内核非特权 ICMP Datagram 支持
+# Option B: Enable unprivileged ICMP datagram sockets in kernel
 sudo sysctl -w net.ipv4.ping_group_range="0 2147483647"
 ```
 
 ---
 
-## HTTP / SSE 接口概览
+## HTTP & SSE API Overview
 
-| 方法与路径 | 说明 |
+| Endpoint | Description |
 | --- | --- |
-| `GET /healthz` | 存活探测 |
-| `GET /metrics` | Prometheus 指标导出（支持 `metrics_token` Bearer 鉴权） |
-| `GET /api/v1/meta` | 门户元信息、访客 IP/ASN 识别与在线节点列表 |
-| `GET /api/v1/nodes` | 节点实时在线状态、负载与短期 HMAC 测速凭据 |
-| `GET /api/v1/probe/compare` | SSE 流式多节点并发延迟与回程线路横评 |
-| `GET /api/v1/probe/mtr` | SSE 流式单节点多轮次实时 MTR 路由追踪 |
-| `GET /api/v1/probe/ping` | SSE 流式单节点 ICMP / TCP Ping 探测 |
-| `GET /api/v1/bgp/route` | 查询节点 BGP 路由表（RIB 路径、AS-Path、Communities） |
-| `GET /api/v1/bgp/summary` | 查询节点 BGP 邻居会话状态 |
-| `POST /api/v1/iperf3/lease` | 申请节点临时独占 iPerf3 服务端端口租约 |
-| `GET /api/v1/speedtest/{ping,download}` | HTML5 测速延迟与不可压缩下载流 |
-| `POST /api/v1/speedtest/upload` | HTML5 测速上传接收端（零落盘丢弃） |
-| `GET /speedtest/files/{name}` | 零磁盘内存流式测速包（`10MB.bin` / `100MB.bin` / `1GB.bin`） |
+| `GET /healthz` | Liveness and readiness check |
+| `GET /metrics` | Prometheus metrics exposition (optional `metrics_token` Bearer auth) |
+| `GET /api/v1/meta` | Portal metadata, visitor IP/ASN detection, and registered node list |
+| `GET /api/v1/nodes` | Live node status, active load, and short-lived HMAC speedtest tickets |
+| `GET /api/v1/probe/compare` | SSE streaming multi-node concurrent latency & return-route comparison |
+| `GET /api/v1/probe/mtr` | SSE streaming multi-cycle live MTR trace |
+| `GET /api/v1/probe/ping` | SSE streaming single-node ICMP / TCP Ping |
+| `GET /api/v1/bgp/route` | BGP RIB route lookup (paths, AS-Path, LocalPref, Communities) |
+| `GET /api/v1/bgp/summary` | BGP neighbor session summary |
+| `POST /api/v1/iperf3/lease` | Allocate an ephemeral one-shot iPerf3 server port lease |
+| `GET /api/v1/speedtest/{ping,download}` | HTML5 speedtest latency probe and incompressible download stream |
+| `POST /api/v1/speedtest/upload` | HTML5 speedtest zero-disk upload sink |
+| `GET /speedtest/files/{name}` | Zero-disk in-memory test files (`10MB.bin`, `100MB.bin`, `1GB.bin`) |
 
 ---
 
-## 开发与验证
+## Development & Verification
 
 ```bash
 make fmt
@@ -198,6 +200,6 @@ make smoke
 make build
 ```
 
-## 开源协议
+## License
 
 [MIT License](LICENSE) © 2026 cloudapp3

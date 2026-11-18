@@ -120,11 +120,133 @@ const I18N = {
         bgp_peers_btn: 'View BGP Peers',
         bgp_disabled: 'BGP Looking Glass is not enabled on this node (enable [bgp] in config.toml).',
         bgp_raw: 'View Raw Router RIB Output',
+    },
+    'zh-TW': {
+        your_ip: '你的 IP',
+        probe_me: '測我本機',
+        nodes_title: '可用測試節點',
+        refresh: '重新整理',
+        tab_compare: '⚡ 多節點同屏橫評',
+        tab_diag: '🧭 路由追蹤 & Ping',
+        tab_speed: '🚀 頻寬測速 & iPerf3',
+        tab_bgp: '🌐 BGP 路由 & 拓撲',
+        tab_share: '📋 脫敏報告匯出',
+        target_label: '目標 IP 或網域',
+        ip_version: '協定堆疊',
+        diag_tool: '診斷工具',
+        start_test: '開始測試',
+        stop_test: '停止',
+        compare_heading: '全球節點並發延遲與回程線路對比',
+        compare_desc: '一次輸入訪客 IP，所有在線節點同步探測延遲、掉包率並自動識別回程骨幹網類型。',
+        include_route: '同步追蹤回程線路',
+        col_node: '節點',
+        col_route: '回程線路判定',
+        col_avg_rtt: '平均延遲',
+        col_minmax: '最值 / 抖動',
+        col_loss: '掉包率',
+        col_detail: '路徑詳情',
+        compare_empty: '點擊上方「測我本機」或輸入目標後點擊「開始測試」，即可同屏對比全部在線節點。',
+        diag_current_node: '目前節點：',
+        diag_ready: '選擇上方節點並啟動即時串流 MTR 或 Ping 診斷。',
+        stat_avg: '平均 RTT',
+        stat_min_max: '最小 / 最大',
+        stat_jitter: '抖動 (Jitter)',
+        stat_loss: '掉包率',
+        detected_route: '識別線路類型：',
+        col_hop_host: '跳點 IP / PTR',
+        col_asn_org: 'ASN / 電信商 & IXP',
+        mtr_empty: '等待開始即時 MTR 路由追蹤…',
+        speedtest_title: 'HTML5 瀏覽器直連測速',
+        speedtest_desc: '純記憶體偽隨機不可壓縮流直連測試，零磁碟落盤開銷。',
+        start_speedtest: '開始測速',
+        dl_mbps: '下載頻寬 (Mbps)',
+        ul_mbps: '上傳頻寬 (Mbps)',
+        testfiles_title: '零落盤測速檔案下載',
+        testfiles_desc: '伺服器記憶體即時串流產生，支援瀏覽器或指令列拉取。',
+        iperf_title: 'iPerf3 臨時連接埠租約',
+        iperf_desc: '按需分配獨佔臨時連接埠並啟動單工作階段 iPerf3 伺服器，到期自動銷毀。',
+        lease_iperf: '申請臨時 iPerf3 連接埠',
+        lease_port: '分配連接埠：',
+        copy: '複製',
+        copied: '已複製!',
+        share_title: '論壇直貼 Markdown 報告匯出',
+        share_desc: '自動彙整最近一次橫評、MTR、Ping 及測速結果，預設遮罩目標公網 IP 末段。',
+        redact_ip: '自動脫敏目標 IP',
+        copy_md: '一鍵複製 Markdown',
+        view_hops: '查看跳點',
+        hide_hops: '收起',
+        probing: '探測中...',
+        bgp_title: 'BGP 路由表查詢與 AS-Path 拓撲圖',
+        bgp_desc: '唯讀對接 BIRD 2/3、FRRouting、GoBGP，支援前綴路由優選、Large Community 解碼與純 SVG 路徑拓撲。',
+        bgp_peers_btn: '查看 BGP 鄰居工作階段',
+        bgp_disabled: '目前節點未開啟 BGP 模組（可在設定檔啟用 [bgp]）。',
+        bgp_raw: '查看路由器原始輸出 (Raw RIB Output)',
+    },
+    'ja-JP': {
+        your_ip: 'あなたの IP',
+        probe_me: '自端末を測定',
+        nodes_title: '利用可能なノード',
+        refresh: '更新',
+        tab_compare: '⚡ マルチノード一括比較',
+        tab_diag: '🧭 MTR ルート & Ping',
+        tab_speed: '🚀 速度測定 & iPerf3',
+        tab_bgp: '🌐 BGP & AS-Path',
+        tab_share: '📋 Markdown 共有',
+        target_label: '対象 IP またはホスト名',
+        ip_version: 'IP スタック',
+        diag_tool: '診断ツール',
+        start_test: '測定開始',
+        stop_test: '停止',
+        compare_heading: '全リージョン同時レイテンシ・復路ルート比較',
+        compare_desc: '全オンライン拠点から同時に RTT・ロス率・復路バックボーン / IXP を自動判定して比較します。',
+        include_route: '復路ルートも追跡',
+        col_node: 'ノード',
+        col_route: '復路キャリア判定',
+        col_avg_rtt: '平均遅延',
+        col_minmax: '最小 / 最大 / ジッター',
+        col_loss: 'ロス率',
+        col_detail: 'ホップ',
+        compare_empty: '「自端末を測定」または対象を入力して「測定開始」を押すと全ノードを一括比較します。',
+        diag_current_node: '選択中ノード：',
+        diag_ready: '上のノードを選択してリアルタイム MTR または Ping を開始します。',
+        stat_avg: '平均 RTT',
+        stat_min_max: '最小 / 最大',
+        stat_jitter: 'ジッター',
+        stat_loss: 'パケットロス',
+        detected_route: '判定ルート：',
+        col_hop_host: 'ホップ IP / PTR',
+        col_asn_org: 'ASN / 事業者 & IXP',
+        mtr_empty: 'リアルタイム MTR トレース待機中…',
+        speedtest_title: 'HTML5 ブラウザ速度測定',
+        speedtest_desc: 'メモリ上の非圧縮 ChaCha8 ストリームによるディスク負荷ゼロの速度測定。',
+        start_speedtest: '速度測定を開始',
+        dl_mbps: 'ダウンロード (Mbps)',
+        ul_mbps: 'アップロード (Mbps)',
+        testfiles_title: 'ゼロディスク・テストファイル',
+        testfiles_desc: 'サーバーメモリから直接ストリーミング生成されます。',
+        iperf_title: '一時 iPerf3 ポートリース',
+        iperf_desc: '専用の一時ポートを割り当て、期限切れで自動停止する iPerf3 サーバーを起動します。',
+        lease_iperf: '一時 iPerf3 ポートを取得',
+        lease_port: '割当ポート：',
+        copy: 'コピー',
+        copied: 'コピー完了!',
+        share_title: 'マスク済み Markdown レポート出力',
+        share_desc: '比較・MTR・Ping・速度測定の結果をターゲット IP 末尾マスク付きで出力します。',
+        redact_ip: '対象 IP 末尾をマスク',
+        copy_md: 'Markdown をコピー',
+        view_hops: 'ホップ表示',
+        hide_hops: '閉じる',
+        probing: '測定中...',
+        bgp_title: 'BGP RIB 検索 & AS-Path トポロジ図',
+        bgp_desc: 'BIRD 2/3・FRRouting・GoBGP 読み取り専用連携と純 SVG トポロジ描画。',
+        bgp_peers_btn: 'BGP ピア一覧を表示',
+        bgp_disabled: 'このノードでは BGP モジュールが無効です（config.toml の [bgp] で有効化可能）。',
+        bgp_raw: 'ルーター生出力を表示 (Raw RIB Output)',
     }
 };
 
 const state = {
-    locale: localStorage.getItem('vmlg-locale') || 'zh-CN',
+    locale: localStorage.getItem('vmlg-locale') || 'en-US',
     activeTab: 'compare',
     meta: null,
     nodes: [],
@@ -141,8 +263,8 @@ const state = {
 };
 
 function t(key) {
-    const dict = I18N[state.locale] || I18N['zh-CN'];
-    return dict[key] || key;
+    const dict = I18N[state.locale] || I18N['en-US'];
+    return dict[key] || I18N['en-US'][key] || key;
 }
 
 function escapeHTML(str) {
@@ -169,7 +291,10 @@ function redactIP(raw) {
 
 function applyLocale() {
     document.documentElement.lang = state.locale;
-    document.getElementById('btn-lang').textContent = state.locale === 'zh-CN' ? 'EN' : '中文';
+    const sel = document.getElementById('lang-select');
+    if (sel && I18N[state.locale]) {
+        sel.value = state.locale;
+    }
     document.querySelectorAll('[data-i18n]').forEach((el) => {
         el.textContent = t(el.getAttribute('data-i18n'));
     });
@@ -1221,8 +1346,8 @@ function bindEvents() {
         btn.addEventListener('click', () => switchTab(btn.getAttribute('data-tab')));
     });
 
-    document.getElementById('btn-lang').addEventListener('click', () => {
-        state.locale = state.locale === 'zh-CN' ? 'en-US' : 'zh-CN';
+    document.getElementById('lang-select').addEventListener('change', (e) => {
+        state.locale = e.target.value;
         localStorage.setItem('vmlg-locale', state.locale);
         applyLocale();
         renderCompareTable();
@@ -1290,4 +1415,5 @@ function bindEvents() {
 }
 
 bindEvents();
+applyLocale();
 loadMeta(false);

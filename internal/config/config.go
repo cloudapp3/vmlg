@@ -144,7 +144,7 @@ func Default(mode string) Config {
 			Listen:        "0.0.0.0:8080",
 			Title:         "vmlg Looking Glass",
 			Subtitle:      "Multi-Node Network Diagnostics & Speedtest Portal",
-			DefaultLocale: "zh-CN",
+			DefaultLocale: "en-US",
 			CORSOrigins:   []string{"*"},
 			EnableMetrics: true,
 		},
