@@ -101,7 +101,48 @@ export VMLG_AGENT_TOKEN="replace-with-strong-random-token"
 ./vmlg check -config ./examples/standalone.toml
 ```
 
-### 4. MCP Server（AI 辅助多节点网络排障）
+### 4. Docker 与 Docker Compose 部署
+
+官方多架构镜像（`linux/amd64`、`linux/arm64`）自动发布至 `ghcr.io/cloudapp3/vmlg:latest`，镜像内已预装 `iperf3` 并以非特权用户（UID `10001`）运行。
+
+**方式 A：Docker Compose 一键单机部署**
+
+```bash
+docker compose up -d
+```
+
+**方式 B：`docker run` 纯环境变量启动（单机模式）**
+
+```bash
+docker run -d \
+  --name vmlg \
+  --restart unless-stopped \
+  --cap-drop ALL \
+  --cap-add NET_RAW \
+  --sysctl net.ipv4.ping_group_range="0 2147483647" \
+  -p 8080:8080 \
+  -p 5201-5210:5201-5210/tcp \
+  -p 5201-5210:5201-5210/udp \
+  -e VMLG_NODE_ID=tyo-01 \
+  -e VMLG_NODE_NAME="Tokyo · BGP Premium" \
+  -e VMLG_NODE_LOCATION="Tokyo, JP" \
+  -e VMLG_NODE_REGION=APAC \
+  ghcr.io/cloudapp3/vmlg:latest
+```
+
+> **提示**：如需探测宿主机原生 IPv6 路由或挂载宿主机 BIRD Socket，可改用 `--network host` 并附加 `-v /run/bird/bird.ctl:/run/bird/bird.ctl:ro -e VMLG_BGP_DRIVER=bird`。
+
+**方式 C：多节点 Hub + Agent 容器化编排**
+
+见 [docker-compose.cluster.yml](docker-compose.cluster.yml)（支持环境变量与 `*_FILE` Docker Secrets 注入，例如 `VMLG_AGENT_TOKEN_FILE`）：
+
+```bash
+# 启动中心门户 Hub（含本地节点）与测试 Agent
+VMLG_AGENT_TOKEN="replace-with-strong-token" \
+  docker compose -f docker-compose.cluster.yml --profile agent up -d
+```
+
+### 5. MCP Server（AI 辅助多节点网络排障）
 
 ```bash
 # 本地单机诊断模式（无需监听端口）

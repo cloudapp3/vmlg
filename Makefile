@@ -1,6 +1,7 @@
-.PHONY: build test race vet fmt smoke clean
+.PHONY: build test race vet fmt smoke docker-build clean
 
 BINARY ?= vmlg
+IMAGE ?= ghcr.io/cloudapp3/vmlg:local
 GOCACHE ?= /tmp/vmlg-gocache
 GO_FILES := $(shell find . -name '*.go' -not -path './.git/*')
 
@@ -25,6 +26,9 @@ smoke:
 	GOCACHE=$(GOCACHE) GOFLAGS=-buildvcs=false go run ./cmd/vmlg check -config ./examples/standalone.toml
 	GOCACHE=$(GOCACHE) GOFLAGS=-buildvcs=false go run ./cmd/vmlg check -config ./examples/hub.toml
 	GOCACHE=$(GOCACHE) GOFLAGS=-buildvcs=false go run ./cmd/vmlg check -config ./examples/agent.toml
+
+docker-build:
+	docker build -t $(IMAGE) .
 
 clean:
 	rm -f $(BINARY)

@@ -1,0 +1,58 @@
+services:
+  vmlg-hub:
+    image: ghcr.io/cloudapp3/vmlg:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    init: true
+    restart: unless-stopped
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_RAW
+    sysctls:
+      net.ipv4.ping_group_range: "0 2147483647"
+    ports:
+      - "${VMLG_HUB_BIND:-0.0.0.0}:8080:8080"
+    environment:
+      VMLG_MODE: hub
+      VMLG_LISTEN: "0.0.0.0:8080"
+      VMLG_TITLE: "${VMLG_TITLE:-Global Cloud Looking Glass}"
+      VMLG_HUB_ENABLE_LOCAL_NODE: "${VMLG_HUB_ENABLE_LOCAL_NODE:-true}"
+      VMLG_NODE_ID: "${VMLG_HUB_NODE_ID:-hub-hkg}"
+      VMLG_NODE_NAME: "${VMLG_HUB_NODE_NAME:-Hong Kong · Hub}"
+      VMLG_NODE_LOCATION: "${VMLG_HUB_NODE_LOCATION:-Hong Kong}"
+      VMLG_NODE_REGION: "${VMLG_HUB_NODE_REGION:-APAC}"
+      VMLG_AGENT_TOKEN: "${VMLG_AGENT_TOKEN:?set VMLG_AGENT_TOKEN in environment or .env}"
+      VMLG_SIGNING_SECRET: "${VMLG_SIGNING_SECRET:-}"
+
+  vmlg-agent:
+    image: ghcr.io/cloudapp3/vmlg:latest
+    profiles: ["agent"]
+    depends_on:
+      - vmlg-hub
+    init: true
+    restart: unless-stopped
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_RAW
+    sysctls:
+      net.ipv4.ping_group_range: "0 2147483647"
+    ports:
+      - "${VMLG_AGENT_SPEED_BIND:-0.0.0.0}:8081:8081"
+      - "${VMLG_IPERF_BIND:-0.0.0.0}:5201-5210:5201-5210/tcp"
+      - "${VMLG_IPERF_BIND:-0.0.0.0}:5201-5210:5201-5210/udp"
+    environment:
+      VMLG_MODE: agent
+      VMLG_HUB_URL: "${VMLG_HUB_URL:-ws://vmlg-hub:8080/api/v1/cluster/ws}"
+      VMLG_AGENT_TOKEN: "${VMLG_AGENT_TOKEN:?set VMLG_AGENT_TOKEN in environment or .env}"
+      VMLG_SIGNING_SECRET: "${VMLG_SIGNING_SECRET:-}"
+      VMLG_NODE_ID: "${VMLG_AGENT_NODE_ID:-lax-01}"
+      VMLG_NODE_NAME: "${VMLG_AGENT_NODE_NAME:-Los Angeles · CN2 GIA}"
+      VMLG_NODE_LOCATION: "${VMLG_AGENT_LOCATION:-Los Angeles, US}"
+      VMLG_NODE_REGION: "${VMLG_AGENT_REGION:-NA}"
+      VMLG_NODE_TAGS: "${VMLG_AGENT_TAGS:-CN2 GIA,10Gbps}"
+      VMLG_SPEEDTEST_LISTEN: "0.0.0.0:8081"
+      VMLG_NODE_PUBLIC_URL: "${VMLG_AGENT_PUBLIC_URL:-http://127.0.0.1:8081}"
+      VMLG_NODE_PUBLIC_HOST: "${VMLG_AGENT_PUBLIC_HOST:-127.0.0.1}"

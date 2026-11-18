@@ -9,6 +9,7 @@ import (
 	"net/netip"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -231,10 +232,60 @@ func Load(path string, defaultMode string) (Config, error) {
 }
 
 func (c *Config) ApplyEnv() {
+	if v := readEnvOrFile("VMLG_MODE"); v != "" {
+		c.Mode = v
+	}
 	if v := strings.TrimSpace(os.Getenv("VMLG_LISTEN")); v != "" {
 		c.Server.Listen = v
 	}
-	if v := strings.TrimSpace(os.Getenv("VMLG_AGENT_TOKEN")); v != "" {
+	if v := strings.TrimSpace(os.Getenv("VMLG_TITLE")); v != "" {
+		c.Server.Title = v
+	}
+	if v := strings.TrimSpace(os.Getenv("VMLG_SUBTITLE")); v != "" {
+		c.Server.Subtitle = v
+	}
+	if v := strings.TrimSpace(os.Getenv("VMLG_LOCALE")); v != "" {
+		c.Server.DefaultLocale = v
+	}
+	if v := strings.TrimSpace(os.Getenv("VMLG_TRUSTED_PROXIES")); v != "" {
+		c.Server.TrustedProxies = splitCSV(v)
+	}
+
+	if v := strings.TrimSpace(os.Getenv("VMLG_NODE_ID")); v != "" {
+		c.Node.ID = v
+	}
+	if v := strings.TrimSpace(os.Getenv("VMLG_NODE_NAME")); v != "" {
+		c.Node.Name = v
+	}
+	if v := strings.TrimSpace(os.Getenv("VMLG_NODE_LOCATION")); v != "" {
+		c.Node.Location = v
+	}
+	if v := strings.TrimSpace(os.Getenv("VMLG_NODE_REGION")); v != "" {
+		c.Node.Region = v
+	}
+	if v := strings.TrimSpace(os.Getenv("VMLG_NODE_PROVIDER")); v != "" {
+		c.Node.Provider = v
+	}
+	if v := strings.TrimSpace(os.Getenv("VMLG_NODE_ASN")); v != "" {
+		c.Node.ASN = v
+	}
+	if v := strings.TrimSpace(os.Getenv("VMLG_NODE_IPV4")); v != "" {
+		c.Node.IPv4 = v
+	}
+	if v := strings.TrimSpace(os.Getenv("VMLG_NODE_IPV6")); v != "" {
+		c.Node.IPv6 = v
+	}
+	if v := strings.TrimSpace(os.Getenv("VMLG_NODE_PUBLIC_URL")); v != "" {
+		c.Node.PublicURL = v
+	}
+	if v := strings.TrimSpace(os.Getenv("VMLG_NODE_PUBLIC_HOST")); v != "" {
+		c.Node.PublicHost = v
+	}
+	if v := strings.TrimSpace(os.Getenv("VMLG_NODE_TAGS")); v != "" {
+		c.Node.Tags = splitCSV(v)
+	}
+
+	if v := readEnvOrFile("VMLG_AGENT_TOKEN"); v != "" {
 		if c.Hub.AgentToken == "" {
 			c.Hub.AgentToken = v
 		}
@@ -242,7 +293,7 @@ func (c *Config) ApplyEnv() {
 			c.Agent.Token = v
 		}
 	}
-	if v := strings.TrimSpace(os.Getenv("VMLG_SIGNING_SECRET")); v != "" {
+	if v := readEnvOrFile("VMLG_SIGNING_SECRET"); v != "" {
 		if c.Hub.SigningSecret == "" {
 			c.Hub.SigningSecret = v
 		}
@@ -250,12 +301,65 @@ func (c *Config) ApplyEnv() {
 			c.Agent.SigningSecret = v
 		}
 	}
+	if v := strings.TrimSpace(os.Getenv("VMLG_HUB_ENABLE_LOCAL_NODE")); v != "" {
+		if b, err := strconv.ParseBool(v); err == nil {
+			c.Hub.EnableLocalNode = b
+		}
+	}
 	if v := strings.TrimSpace(os.Getenv("VMLG_HUB_URL")); v != "" && c.Agent.HubURL == "" {
 		c.Agent.HubURL = v
 	}
-	if v := strings.TrimSpace(os.Getenv("VMLG_METRICS_TOKEN")); v != "" && c.Server.MetricsToken == "" {
+	if v := strings.TrimSpace(os.Getenv("VMLG_SPEEDTEST_LISTEN")); v != "" {
+		c.Agent.SpeedtestListen = v
+	}
+	if v := readEnvOrFile("VMLG_METRICS_TOKEN"); v != "" && c.Server.MetricsToken == "" {
 		c.Server.MetricsToken = v
 	}
+	if v := strings.TrimSpace(os.Getenv("VMLG_ALLOW_PRIVATE")); v != "" {
+		if b, err := strconv.ParseBool(v); err == nil {
+			c.Guard.AllowPrivateTargets = b
+		}
+	}
+	if v := strings.TrimSpace(os.Getenv("VMLG_BGP_DRIVER")); v != "" {
+		c.BGP.Enabled = true
+		c.BGP.Driver = v
+	}
+	if v := strings.TrimSpace(os.Getenv("VMLG_BIRD_SOCKET")); v != "" {
+		c.BGP.BirdSocket = v
+	}
+	if v := strings.TrimSpace(os.Getenv("VMLG_IPERF3_PORT_START")); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			c.IPerf3.PortStart = n
+		}
+	}
+	if v := strings.TrimSpace(os.Getenv("VMLG_IPERF3_PORT_END")); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			c.IPerf3.PortEnd = n
+		}
+	}
+}
+
+func readEnvOrFile(key string) string {
+	if v := strings.TrimSpace(os.Getenv(key)); v != "" {
+		return v
+	}
+	if filePath := strings.TrimSpace(os.Getenv(key + "_FILE")); filePath != "" {
+		if b, err := os.ReadFile(filePath); err == nil {
+			return strings.TrimSpace(string(b))
+		}
+	}
+	return ""
+}
+
+func splitCSV(raw string) []string {
+	parts := strings.Split(raw, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		if s := strings.TrimSpace(p); s != "" {
+			out = append(out, s)
+		}
+	}
+	return out
 }
 
 func (c *Config) NormalizeAndValidate() error {

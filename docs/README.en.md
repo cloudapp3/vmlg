@@ -25,6 +25,9 @@ go install github.com/cloudapp3/vmlg/cmd/vmlg@latest
 
 # Standalone mode
 vmlg serve -listen 0.0.0.0:8080 -node-name "Tokyo BGP" -region "APAC"
+
+# Docker Compose quick start (multi-arch ghcr.io/cloudapp3/vmlg:latest with iperf3 preinstalled)
+docker compose up -d
 ```
 
-See [examples/standalone.toml](../examples/standalone.toml), [examples/hub.toml](../examples/hub.toml), and [examples/agent.toml](../examples/agent.toml) for production configurations.
+See [docker-compose.yml](../docker-compose.yml), [docker-compose.cluster.yml](../docker-compose.cluster.yml), [examples/standalone.toml](../examples/standalone.toml), [examples/hub.toml](../examples/hub.toml), and [examples/agent.toml](../examples/agent.toml) for production configurations.

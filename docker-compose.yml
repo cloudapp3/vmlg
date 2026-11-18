@@ -1,0 +1,34 @@
+services:
+  vmlg:
+    image: ghcr.io/cloudapp3/vmlg:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: vmlg
+    init: true
+    restart: unless-stopped
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_RAW
+    sysctls:
+      net.ipv4.ping_group_range: "0 2147483647"
+    ports:
+      - "${VMLG_HTTP_BIND:-0.0.0.0}:8080:8080"
+      - "${VMLG_IPERF_BIND:-0.0.0.0}:5201-5210:5201-5210/tcp"
+      - "${VMLG_IPERF_BIND:-0.0.0.0}:5201-5210:5201-5210/udp"
+    environment:
+      VMLG_MODE: standalone
+      VMLG_LISTEN: "0.0.0.0:8080"
+      VMLG_TITLE: "${VMLG_TITLE:-vmlg Looking Glass}"
+      VMLG_NODE_ID: "${VMLG_NODE_ID:-local-01}"
+      VMLG_NODE_NAME: "${VMLG_NODE_NAME:-Tokyo · BGP Node}"
+      VMLG_NODE_LOCATION: "${VMLG_NODE_LOCATION:-Tokyo, JP}"
+      VMLG_NODE_REGION: "${VMLG_NODE_REGION:-APAC}"
+      VMLG_NODE_PUBLIC_HOST: "${VMLG_NODE_PUBLIC_HOST:-127.0.0.1}"
+      VMLG_NODE_TAGS: "${VMLG_NODE_TAGS:-10Gbps,BGP}"
+      VMLG_TRUSTED_PROXIES: "${VMLG_TRUSTED_PROXIES:-127.0.0.1/32,172.16.0.0/12}"
+    # Uncomment to mount custom TOML configuration or host BIRD control socket:
+    # volumes:
+    #   - ./examples/standalone.toml:/etc/vmlg/config.toml:ro
+    #   - /run/bird/bird.ctl:/run/bird/bird.ctl:ro

@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -30,7 +31,10 @@ func main() {
 }
 
 func run(args []string) int {
-	cmd := "serve"
+	cmd := strings.ToLower(strings.TrimSpace(os.Getenv("VMLG_MODE")))
+	if cmd == "" {
+		cmd = "serve"
+	}
 	if len(args) > 0 && !strings.HasPrefix(args[0], "-") {
 		cmd = args[0]
 		args = args[1:]
@@ -51,6 +55,8 @@ func run(args []string) int {
 		return runAgentMode(args)
 	case "mcp":
 		return runMCPMode(args)
+	case "healthcheck":
+		return runHealthcheck(args)
 	case "check":
 		return runCheck(args)
 	case "version":
@@ -88,9 +94,13 @@ func runHTTPMode(defaultMode string, args []string) int {
 	}
 
 	logger := newLogger(*jsonLog)
+	cfgFile := strings.TrimSpace(*cfgPath)
+	if cfgFile == "" {
+		cfgFile = strings.TrimSpace(os.Getenv("VMLG_CONFIG"))
+	}
 	cfg := config.Default(defaultMode)
-	if *cfgPath != "" {
-		loaded, err := config.Load(*cfgPath, defaultMode)
+	if cfgFile != "" {
+		loaded, err := config.Load(cfgFile, defaultMode)
 		if err != nil {
 			logger.Error("failed to load config", "err", err)
 			return 1
@@ -100,7 +110,7 @@ func runHTTPMode(defaultMode string, args []string) int {
 		cfg.ApplyEnv()
 	}
 
-	if defaultMode == config.ModeHub && *cfgPath == "" {
+	if defaultMode == config.ModeHub && cfgFile == "" {
 		cfg.Mode = config.ModeHub
 	}
 	if *listen != "" {
@@ -220,9 +230,13 @@ func runAgentMode(args []string) int {
 	}
 
 	logger := newLogger(*jsonLog)
+	cfgFile := strings.TrimSpace(*cfgPath)
+	if cfgFile == "" {
+		cfgFile = strings.TrimSpace(os.Getenv("VMLG_CONFIG"))
+	}
 	cfg := config.Default(config.ModeAgent)
-	if *cfgPath != "" {
-		loaded, err := config.Load(*cfgPath, config.ModeAgent)
+	if cfgFile != "" {
+		loaded, err := config.Load(cfgFile, config.ModeAgent)
 		if err != nil {
 			logger.Error("failed to load config", "err", err)
 			return 1
@@ -367,6 +381,58 @@ func runMCPMode(args []string) int {
 	return 0
 }
 
+func runHealthcheck(args []string) int {
+	fs := flag.NewFlagSet("healthcheck", flag.ContinueOnError)
+	targetURL := fs.String("url", "", "Explicit healthz URL to check")
+	if err := fs.Parse(args); err != nil {
+		return 2
+	}
+
+	u := strings.TrimSpace(*targetURL)
+	if u == "" {
+		mode := strings.ToLower(strings.TrimSpace(os.Getenv("VMLG_MODE")))
+		if mode == config.ModeAgent {
+			sp := strings.TrimSpace(os.Getenv("VMLG_SPEEDTEST_LISTEN"))
+			if sp == "" {
+				st, err := os.Stat(cluster.AgentReadyFile)
+				if err != nil || time.Since(st.ModTime()) > 90*time.Second {
+					fmt.Fprintln(os.Stderr, "agent tunnel not ready")
+					return 1
+				}
+				return 0
+			}
+			_, port, err := net.SplitHostPort(sp)
+			if err != nil {
+				port = "8081"
+			}
+			u = "http://127.0.0.1:" + port + "/healthz"
+		} else {
+			listen := strings.TrimSpace(os.Getenv("VMLG_LISTEN"))
+			if listen == "" {
+				listen = "127.0.0.1:8080"
+			}
+			_, port, err := net.SplitHostPort(listen)
+			if err != nil {
+				port = "8080"
+			}
+			u = "http://127.0.0.1:" + port + "/healthz"
+		}
+	}
+
+	client := &http.Client{Timeout: 3 * time.Second}
+	resp, err := client.Get(u)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "healthcheck failed: %v\n", err)
+		return 1
+	}
+	_ = resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		fmt.Fprintf(os.Stderr, "healthcheck returned status %d\n", resp.StatusCode)
+		return 1
+	}
+	return 0
+}
+
 func runCheck(args []string) int {
 	fs := flag.NewFlagSet("check", flag.ContinueOnError)
 	cfgPath := fs.String("config", "", "Path to TOML config file")
@@ -418,6 +484,7 @@ Usage:
   vmlg hub [flags]        Start central multi-node Looking Glass Hub portal
   vmlg agent [flags]      Start lightweight regional Looking Glass Agent
   vmlg mcp [flags]        Start stdio JSON-RPC MCP server (local or remote Hub)
+  vmlg healthcheck        Probe container/local service readiness
   vmlg check -config FILE Validate a TOML configuration file
   vmlg version [-json]    Print build and runtime version info
 

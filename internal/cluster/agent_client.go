@@ -8,6 +8,7 @@ import (
 	"math/rand/v2"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -118,6 +119,16 @@ func (a *AgentClient) startSpeedtestHTTPServer() *http.Server {
 	return srv
 }
 
+const AgentReadyFile = "/tmp/vmlg-agent.ready"
+
+func touchAgentReady() {
+	_ = os.WriteFile(AgentReadyFile, []byte("ok\n"), 0o644)
+}
+
+func clearAgentReady() {
+	_ = os.Remove(AgentReadyFile)
+}
+
 func (a *AgentClient) connectAndServeOnce(ctx context.Context, wsURL string) error {
 	hdr := http.Header{}
 	hdr.Set("Authorization", "Bearer "+a.cfg.Agent.Token)
@@ -158,6 +169,8 @@ func (a *AgentClient) connectAndServeOnce(ctx context.Context, wsURL string) err
 	_ = rawConn.SetReadDeadline(time.Time{})
 
 	a.logger.Info("connected to hub", "hub_url", wsURL, "node_id", a.cfg.Node.ID)
+	touchAgentReady()
+	defer clearAgentReady()
 
 	var jobsMu sync.Mutex
 	activeJobs := make(map[string]context.CancelFunc)
@@ -189,6 +202,7 @@ func (a *AgentClient) connectAndServeOnce(ctx context.Context, wsURL string) err
 					cancelConn()
 					return
 				}
+				touchAgentReady()
 			}
 		}
 	}()
