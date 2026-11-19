@@ -3,6 +3,7 @@
 [![CI](https://github.com/cloudapp3/vmlg/actions/workflows/ci.yml/badge.svg)](https://github.com/cloudapp3/vmlg/actions/workflows/ci.yml)
 [![Docker](https://github.com/cloudapp3/vmlg/actions/workflows/docker.yml/badge.svg)](https://github.com/cloudapp3/vmlg/actions/workflows/docker.yml)
 [![Docs](https://img.shields.io/badge/docs-vmlg.bestcheapvps.org-0ea5e9)](https://vmlg.bestcheapvps.org)
+[![Live Demo](https://img.shields.io/badge/Live_Demo-lg.bestcheapvps.org-22c55e)](https://lg.bestcheapvps.org)
 [![Telegram](https://img.shields.io/badge/Telegram-Community-26A5E4?logo=telegram)](https://t.me/VMPulse)
 [![Go Reference](https://pkg.go.dev/badge/github.com/cloudapp3/vmlg.svg)](https://pkg.go.dev/github.com/cloudapp3/vmlg)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
