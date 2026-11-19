@@ -9,9 +9,17 @@ const I18N = {
         tab_speed: '🚀 带宽测速 & iPerf3',
         tab_bgp: '🌐 BGP 路由 & 拓扑',
         tab_share: '📋 脱敏报告导出',
+        tab_dig: '🔎 DNS 解析 (Dig)',
         target_label: '目标 IP 或域名',
         ip_version: '协议栈',
         diag_tool: '诊断工具',
+        dig_rrtype: '记录类型',
+        dig_resolver: 'DNS 服务器',
+        dig_title: 'DNS 解析查询 (dig)',
+        dig_desc: '从节点视角发起完整 dig 语义查询：返回每条记录 TTL、CNAME 链与完整应答区，可指定公共 DNS 对比解析差异（留空使用节点系统解析）。',
+        dig_empty: '输入域名（PTR 可直接填 IP）后点击「开始测试」发起解析…',
+        dig_col_name: '记录名',
+        dig_col_value: '记录值',
         start_test: '开始测试',
         stop_test: '停止',
         compare_heading: '全球节点并发延迟与回程线路对比',
@@ -70,9 +78,17 @@ const I18N = {
         tab_speed: '🚀 Speedtest & iPerf3',
         tab_bgp: '🌐 BGP & AS-Path',
         tab_share: '📋 Share Markdown',
+        tab_dig: '🔎 DNS Dig',
         target_label: 'Target IP or Hostname',
         ip_version: 'IP Stack',
         diag_tool: 'Diagnostic Tool',
+        dig_rrtype: 'Record Type',
+        dig_resolver: 'Resolver',
+        dig_title: 'DNS Query (dig)',
+        dig_desc: 'Full dig semantics from the node: per-record TTLs, CNAME chains and the complete answer section. Leave the resolver empty to use the node system resolver, or set a public one (e.g. 1.1.1.1) to compare.',
+        dig_empty: 'Enter a domain (or an IP for reverse PTR) and press "Run Probe".',
+        dig_col_name: 'Name',
+        dig_col_value: 'Value',
         start_test: 'Run Probe',
         stop_test: 'Stop',
         compare_heading: 'Multi-Region Latency & Return Route Comparison',
@@ -131,9 +147,17 @@ const I18N = {
         tab_speed: '🚀 頻寬測速 & iPerf3',
         tab_bgp: '🌐 BGP 路由 & 拓撲',
         tab_share: '📋 脫敏報告匯出',
+        tab_dig: '🔎 DNS 解析 (Dig)',
         target_label: '目標 IP 或網域',
         ip_version: '協定堆疊',
         diag_tool: '診斷工具',
+        dig_rrtype: '記錄類型',
+        dig_resolver: 'DNS 伺服器',
+        dig_title: 'DNS 解析查詢 (dig)',
+        dig_desc: '從節點視角發起完整 dig 語意查詢：返回每條記錄 TTL、CNAME 鏈與完整應答區，可指定公共 DNS 對比解析差異（留空使用節點系統解析）。',
+        dig_empty: '輸入網域（PTR 可直接填 IP）後點擊「開始測試」發起解析…',
+        dig_col_name: '記錄名',
+        dig_col_value: '記錄值',
         start_test: '開始測試',
         stop_test: '停止',
         compare_heading: '全球節點並發延遲與回程線路對比',
@@ -192,9 +216,17 @@ const I18N = {
         tab_speed: '🚀 速度測定 & iPerf3',
         tab_bgp: '🌐 BGP & AS-Path',
         tab_share: '📋 Markdown 共有',
+        tab_dig: '🔎 DNS Dig',
         target_label: '対象 IP またはホスト名',
         ip_version: 'IP スタック',
         diag_tool: '診断ツール',
+        dig_rrtype: 'レコードタイプ',
+        dig_resolver: 'リゾルバー',
+        dig_title: 'DNS クエリ (dig)',
+        dig_desc: 'ノード視点での完全な dig セマンティクス：レコードごとの TTL・CNAME チェーン・完全な応答セクションを返します。空欄でシステムリゾルバー、指定でパブリック DNS 比較。',
+        dig_empty: 'ドメイン（PTR は IP 直接入力可）を入力して「測定開始」を押してください。',
+        dig_col_name: '名前',
+        dig_col_value: '値',
         start_test: '測定開始',
         stop_test: '停止',
         compare_heading: '全リージョン同時レイテンシ・復路ルート比較',
@@ -407,7 +439,7 @@ function applyInitialURLParams() {
         state.selectedNodeId = qNode;
     }
     const qTab = qs.get('tab');
-    if (qTab && ['compare', 'diag', 'speed', 'bgp', 'share'].includes(qTab)) {
+    if (qTab && ['compare', 'diag', 'dig', 'speed', 'bgp', 'share'].includes(qTab)) {
         switchTab(qTab);
     }
     const qIPVer = qs.get('ip_version');
@@ -417,6 +449,14 @@ function applyInitialURLParams() {
     const qTool = qs.get('tool');
     if (qTool && ['mtr', 'icmp', 'tcp'].includes(qTool)) {
         document.getElementById('diag-tool-select').value = qTool;
+    }
+    const qRRType = qs.get('rrtype');
+    if (qRRType && ['A', 'AAAA', 'CNAME', 'MX', 'NS', 'TXT', 'PTR'].includes(qRRType)) {
+        document.getElementById('dig-rrtype-select').value = qRRType;
+    }
+    const qResolver = qs.get('resolver');
+    if (qResolver) {
+        document.getElementById('dig-resolver-input').value = qResolver;
     }
     const qTarget = qs.get('target');
     if (qTarget) {
@@ -430,7 +470,7 @@ function applyInitialURLParams() {
     if (qs.get('autorun') === '1') {
         setTimeout(() => {
             const target = document.getElementById('target-input').value.trim();
-            if (target && (state.activeTab === 'compare' || state.activeTab === 'diag' || state.activeTab === 'bgp')) {
+            if (target && (state.activeTab === 'compare' || state.activeTab === 'diag' || state.activeTab === 'dig' || state.activeTab === 'bgp')) {
                 document.getElementById('probe-form').requestSubmit();
             }
         }, 80);
@@ -444,7 +484,7 @@ function buildDeepLinkURL(includeEmbed = false) {
         u.searchParams.set('node', state.selectedNodeId);
     }
     const target = document.getElementById('target-input').value.trim();
-    if (target && (state.activeTab === 'compare' || state.activeTab === 'diag' || state.activeTab === 'bgp')) {
+    if (target && (state.activeTab === 'compare' || state.activeTab === 'diag' || state.activeTab === 'dig' || state.activeTab === 'bgp')) {
         const visitorIP = state.meta && state.meta.visitor && state.meta.visitor.ip;
         u.searchParams.set('target', target === visitorIP ? 'me' : target);
         u.searchParams.set('autorun', '1');
@@ -455,6 +495,11 @@ function buildDeepLinkURL(includeEmbed = false) {
     }
     if (state.activeTab === 'diag') {
         u.searchParams.set('tool', document.getElementById('diag-tool-select').value);
+    }
+    if (state.activeTab === 'dig') {
+        u.searchParams.set('rrtype', document.getElementById('dig-rrtype-select').value);
+        const resolver = document.getElementById('dig-resolver-input').value.trim();
+        if (resolver) u.searchParams.set('resolver', resolver);
     }
     if (includeEmbed) {
         u.searchParams.set('embed', '1');
@@ -511,6 +556,7 @@ function syncSelectedNodeUI() {
     document.getElementById('diag-node-label').textContent = label;
     document.getElementById('speed-node-label').textContent = label;
     document.getElementById('bgp-node-label').textContent = label;
+    document.getElementById('dig-node-label').textContent = label;
 
     // BGP capability
     const bgpOK = Boolean(node && node.online && node.capabilities && node.capabilities.bgp);
@@ -563,12 +609,14 @@ function switchTab(tabName) {
     document.querySelectorAll('.tab').forEach((b) => {
         b.classList.toggle('active', b.getAttribute('data-tab') === tabName);
     });
-    ['compare', 'diag', 'speed', 'bgp', 'share'].forEach((id) => {
+    ['compare', 'diag', 'dig', 'speed', 'bgp', 'share'].forEach((id) => {
         document.getElementById(`panel-${id}`).hidden = id !== tabName;
     });
-    const showTargetBar = tabName === 'compare' || tabName === 'diag' || tabName === 'bgp';
+    const showTargetBar = tabName === 'compare' || tabName === 'diag' || tabName === 'dig' || tabName === 'bgp';
     document.getElementById('target-bar').hidden = !showTargetBar;
     document.getElementById('diag-tool-group').hidden = tabName !== 'diag';
+    document.getElementById('dig-rrtype-group').hidden = tabName !== 'dig';
+    document.getElementById('dig-resolver-group').hidden = tabName !== 'dig';
     if (tabName === 'share') {
         renderShareMarkdown();
     }
@@ -1151,6 +1199,59 @@ async function leaseIPerf3() {
 }
 
 // BGP Route Lookup & Pure SVG AS-Path Topology
+async function startDig(target) {
+    const node = selectedNode();
+    if (!node) return;
+    showProbeError('');
+    setProbeRunning(true);
+    state.lastTarget = target;
+
+    try {
+        const qs = new URLSearchParams({
+            node: node.id,
+            target,
+            rrtype: document.getElementById('dig-rrtype-select').value,
+        });
+        const resolver = document.getElementById('dig-resolver-input').value.trim();
+        if (resolver) qs.set('resolver', resolver);
+
+        const res = await fetch(`/api/v1/probe/dig?${qs.toString()}`);
+        const data = await res.json();
+        if (!res.ok) {
+            showProbeError(data.error || 'dig query failed');
+            return;
+        }
+        renderDigResult(data);
+    } catch (e) {
+        showProbeError(e.message);
+    } finally {
+        setProbeRunning(false);
+    }
+}
+
+function renderDigResult(res) {
+    state.lastDig = res;
+
+    const pill = document.getElementById('dig-meta-pill');
+    pill.hidden = false;
+    const elapsed = typeof res.elapsed_ms === 'number' ? res.elapsed_ms.toFixed(2) : res.elapsed_ms;
+    pill.textContent = `${res.rcode} · ${res.resolver} · ${String(res.transport || 'udp').toUpperCase()} · ${elapsed} ms`;
+
+    const tbody = document.getElementById('dig-tbody');
+    if (!res.answers || res.answers.length === 0) {
+        tbody.innerHTML = `<tr class="empty-row"><td colspan="4">${escapeHTML(res.rcode)}</td></tr>`;
+        return;
+    }
+    tbody.innerHTML = res.answers.map((a) => `
+        <tr>
+            <td class="mono">${escapeHTML(a.name)}</td>
+            <td class="mono">${escapeHTML(String(a.ttl))}</td>
+            <td><span class="tag-chip">${escapeHTML(a.type)}</span></td>
+            <td class="mono">${escapeHTML(a.value)}</td>
+        </tr>
+    `).join('');
+}
+
 async function runBGPRouteLookup(target) {
     const node = selectedNode();
     if (!node) return;
@@ -1547,6 +1648,8 @@ function bindEvents() {
             startCompareProbe(target, ipVer);
         } else if (state.activeTab === 'bgp') {
             runBGPRouteLookup(target);
+        } else if (state.activeTab === 'dig') {
+            startDig(target);
         } else {
             startSingleDiag(target, ipVer);
         }

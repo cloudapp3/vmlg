@@ -43,6 +43,32 @@ type PingSummary struct {
 	Samples  []PingSample `json:"samples,omitempty"`
 }
 
+type DigRequest struct {
+	Name      string `json:"name"`
+	RRType    string `json:"rrtype"`             // A | AAAA | CNAME | MX | NS | TXT | PTR
+	Resolver  string `json:"resolver,omitempty"` // IP[:port]; empty = node system resolver
+	TimeoutMs int    `json:"timeout_ms"`
+}
+
+type DigRecord struct {
+	Name  string `json:"name"`
+	TTL   uint32 `json:"ttl"`
+	Type  string `json:"type"`
+	Value string `json:"value"`
+}
+
+type DigResult struct {
+	Name      string      `json:"name"`
+	RRType    string      `json:"rrtype"`
+	Resolver  string      `json:"resolver"`            // effective resolver: "system" or IP[:port]
+	Transport string      `json:"transport"`           // udp | tcp
+	RCode     string      `json:"rcode"`               // NOERROR, NXDOMAIN, SERVFAIL, ...
+	AD        bool        `json:"ad,omitempty"`        // DNSSEC authenticated data flag passthrough
+	Truncated bool        `json:"truncated,omitempty"` // TC bit set on UDP response
+	Answers   []DigRecord `json:"answers"`             // full answer section incl. CNAME chain
+	ElapsedMs float64     `json:"elapsed_ms"`
+}
+
 type MTRRequest struct {
 	Target     string     `json:"target"`
 	TargetAddr netip.Addr `json:"target_addr"`

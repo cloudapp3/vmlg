@@ -17,6 +17,7 @@ import (
 	"github.com/cloudapp3/vmlg/internal/enrich"
 	"github.com/cloudapp3/vmlg/internal/guard"
 	"github.com/cloudapp3/vmlg/internal/probe"
+	"github.com/miekg/dns"
 )
 
 func TestHubAgentTunnelEndToEnd(t *testing.T) {
@@ -115,5 +116,45 @@ func TestHubAgentTunnelEndToEnd(t *testing.T) {
 	bgpRes, err := runner.BGPRoute(ctx, "1.1.1.1")
 	if err != nil || len(bgpRes.Paths) == 0 {
 		t.Fatalf("remote tunneled BGPRoute failed: %+v err=%v", bgpRes, err)
+	}
+
+	// Dig over the tunnel: fake local DNS resolver keeps it deterministic.
+	digAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	digConn, err := net.ListenUDP("udp", digAddr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer digConn.Close()
+	dnsSrv := &dns.Server{PacketConn: digConn, Handler: dns.HandlerFunc(func(w dns.ResponseWriter, r *dns.Msg) {
+		m := new(dns.Msg)
+		m.SetReply(r)
+		if len(r.Question) == 1 && r.Question[0].Name == "tunnel.example.com." {
+			m.Answer = []dns.RR{
+				&dns.A{
+					Hdr: dns.RR_Header{Name: "tunnel.example.com.", Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: 42},
+					A:   net.ParseIP("203.0.113.7"),
+				},
+			}
+		}
+		_ = w.WriteMsg(m)
+	})}
+	go func() { _ = dnsSrv.ActivateAndServe() }()
+	defer func() { _ = dnsSrv.Shutdown() }()
+
+	digRes, err := runner.Dig(ctx, "8.8.8.8", probe.DigRequest{
+		Name:      "tunnel.example.com",
+		RRType:    "A",
+		Resolver:  digConn.LocalAddr().String(),
+		TimeoutMs: 2000,
+	})
+	if err != nil {
+		t.Fatalf("remote tunneled Dig failed: %v", err)
+	}
+	if digRes.RCode != "NOERROR" || len(digRes.Answers) != 1 ||
+		digRes.Answers[0].Value != "203.0.113.7" || digRes.Answers[0].TTL != 42 {
+		t.Fatalf("unexpected tunneled Dig result: %+v", digRes)
 	}
 }

@@ -6,7 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
+	"net/netip"
 	"strconv"
 	"strings"
 	"sync"
@@ -153,6 +155,7 @@ func (s *Server) buildMux() (*http.ServeMux, error) {
 	mux.HandleFunc("GET /api/v1/nodes", s.handleNodes)
 	mux.HandleFunc("GET /api/v1/probe/ping", s.handlePingSSE)
 	mux.HandleFunc("GET /api/v1/probe/mtr", s.handleMTRSSE)
+	mux.HandleFunc("GET /api/v1/probe/dig", s.handleDig)
 	mux.HandleFunc("GET /api/v1/probe/compare", s.handleCompareSSE)
 	mux.HandleFunc("GET /api/v1/bgp/route", s.handleBGPRoute)
 	mux.HandleFunc("GET /api/v1/bgp/summary", s.handleBGPSummary)
@@ -364,6 +367,87 @@ func (s *Server) handleMTRSSE(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	sse.Send("done", snap)
+}
+
+func (s *Server) handleDig(w http.ResponseWriter, r *http.Request) {
+	s.metrics.IncRequest("dig")
+	q := r.URL.Query()
+
+	name := strings.TrimSpace(q.Get("target"))
+	if err := guard.ValidateDigQuery(name); err != nil {
+		s.metrics.IncGuardReject("invalid_target")
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return
+	}
+	rrName, _, err := probe.NormalizeDigRRType(q.Get("rrtype"))
+	if err != nil {
+		s.metrics.IncGuardReject("invalid_target")
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return
+	}
+	resolver, err := probe.NormalizeDigResolver(q.Get("resolver"))
+	if err != nil {
+		s.metrics.IncGuardReject("invalid_target")
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return
+	}
+	if resolver != "" {
+		if ip, perr := netip.ParseAddr(resolverHostPort(resolver)); perr == nil {
+			if aerr := s.guard.CheckAddrAllowed(ip); aerr != nil {
+				s.recordGuardError(aerr)
+				writeJSON(w, http.StatusBadRequest, map[string]string{"error": aerr.Error()})
+				return
+			}
+		}
+	}
+
+	runner, err := s.registry.GetRunner(strings.TrimSpace(q.Get("node")))
+	if err != nil {
+		status := http.StatusNotFound
+		if errors.Is(err, cluster.ErrNodeOffline) {
+			status = http.StatusServiceUnavailable
+		}
+		writeJSON(w, status, map[string]string{"error": err.Error()})
+		return
+	}
+
+	req := probe.DigRequest{
+		Name:      name,
+		RRType:    rrName,
+		Resolver:  resolver,
+		TimeoutMs: s.cfg.Probe.DigTimeoutMs,
+	}
+
+	clientIP := s.guard.ClientIP(r)
+	release, gerr := s.guard.AcquireProbe(clientIP, probe.DigRateTargetAddr(req))
+	if gerr != nil {
+		s.recordGuardError(gerr)
+		status := http.StatusTooManyRequests
+		if errors.Is(gerr, guard.ErrBusy) {
+			status = http.StatusServiceUnavailable
+		}
+		writeJSON(w, status, map[string]string{"error": gerr.Error()})
+		return
+	}
+	defer release()
+
+	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
+	defer cancel()
+
+	res, err := runner.Dig(ctx, clientIP.String(), req)
+	if err != nil {
+		writeJSON(w, http.StatusBadGateway, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, res)
+}
+
+// resolverHostPort splits an already-normalized "ip:port" resolver into its host part.
+func resolverHostPort(normalized string) string {
+	if host, _, err := net.SplitHostPort(normalized); err == nil {
+		return host
+	}
+	return normalized
 }
 
 func (s *Server) handleCompareSSE(w http.ResponseWriter, r *http.Request) {

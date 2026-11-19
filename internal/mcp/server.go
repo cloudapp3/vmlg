@@ -286,6 +286,30 @@ func (s *Server) callTool(ctx context.Context, name string, rawArgs json.RawMess
 		}
 		return toolResult{Text: "no MTR snapshot returned"}, true
 
+	case "vmlg_dig":
+		target := strArg("target")
+		if target == "" {
+			return toolResult{Text: "target is required"}, true
+		}
+		q := url.Values{}
+		q.Set("target", target)
+		if v := strArg("rrtype"); v != "" {
+			q.Set("rrtype", v)
+		}
+		if v := strArg("resolver"); v != "" {
+			q.Set("resolver", v)
+		}
+		if v := strArg("node"); v != "" {
+			q.Set("node", v)
+		}
+
+		var res map[string]any
+		if err := s.getJSON(ctx, "/api/v1/probe/dig?"+q.Encode(), &res); err != nil {
+			return toolResult{Text: err.Error()}, true
+		}
+		b, _ := json.MarshalIndent(res, "", "  ")
+		return toolResult{Text: string(b), Structured: res}, false
+
 	case "vmlg_compare":
 		target := strArg("target")
 		if target == "" {
@@ -495,6 +519,20 @@ func toolDefinitions() []map[string]any {
 					"node":       map[string]any{"type": "string", "description": "Optional node ID"},
 					"ip_version": map[string]any{"type": "string", "enum": []string{"auto", "v4", "v6"}},
 					"cycles":     map[string]any{"type": "integer", "description": "MTR probe cycles (1-10)"},
+				},
+				"required": []string{"target"},
+			},
+		},
+		{
+			"name":        "vmlg_dig",
+			"description": "Run a DNS query (dig) from a Looking Glass node: full answer records with TTLs and CNAME chains via the node's system resolver or a user-specified resolver.",
+			"inputSchema": map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"target":   map[string]any{"type": "string", "description": "Domain name to query, or an IP for reverse PTR lookups"},
+					"rrtype":   map[string]any{"type": "string", "enum": []string{"A", "AAAA", "CNAME", "MX", "NS", "TXT", "PTR"}, "description": "Record type (default A)"},
+					"resolver": map[string]any{"type": "string", "description": "Optional resolver IP literal (e.g. 1.1.1.1); defaults to the node's system resolver"},
+					"node":     map[string]any{"type": "string", "description": "Optional node ID"},
 				},
 				"required": []string{"target"},
 			},

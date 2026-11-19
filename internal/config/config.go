@@ -103,6 +103,7 @@ type ProbeConfig struct {
 	MTRDefaultCycles int  `toml:"mtr_default_cycles"`
 	MTRMaxCycles     int  `toml:"mtr_max_cycles"`
 	MTRMaxHops       int  `toml:"mtr_max_hops"`
+	DigTimeoutMs     int  `toml:"dig_timeout_ms"`
 	EnableDNSASN     bool `toml:"enable_dns_asn"`
 	EnablePTR        bool `toml:"enable_ptr"`
 }
@@ -190,6 +191,7 @@ func Default(mode string) Config {
 			MTRDefaultCycles: 5,
 			MTRMaxCycles:     10,
 			MTRMaxHops:       30,
+			DigTimeoutMs:     5000,
 			EnableDNSASN:     true,
 			EnablePTR:        true,
 		},
@@ -524,6 +526,9 @@ func (c *Config) NormalizeAndValidate() error {
 	}
 	if c.Probe.MTRMaxHops <= 0 || c.Probe.MTRMaxHops > 64 {
 		return fmt.Errorf("probe.mtr_max_hops must be between 1 and 64 (got %d)", c.Probe.MTRMaxHops)
+	}
+	if c.Probe.DigTimeoutMs <= 0 || c.Probe.DigTimeoutMs > 15000 {
+		c.Probe.DigTimeoutMs = 5000
 	}
 
 	if c.IPerf3.Enabled {

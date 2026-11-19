@@ -41,6 +41,8 @@ ping_interval_ms = 350
 mtr_default_cycles = 5
 mtr_max_cycles = 10
 mtr_max_hops = 30
+# DNS dig query timeout in milliseconds (500-15000)
+dig_timeout_ms = 5000
 enable_dns_asn = true
 enable_ptr = true
 

@@ -29,6 +29,8 @@ func TestMCPStdioServerInitializeAndToolsCall(t *testing.T) {
 		`{"jsonrpc":"2.0","id":2,"method":"tools/list"}`,
 		`{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"vmlg_list_nodes","arguments":{}}}`,
 		`{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"vmlg_bgp_route","arguments":{"target":"1.1.1.1"}}}`,
+		`{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"vmlg_dig","arguments":{}}}`,
+		`{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"vmlg_dig","arguments":{"target":"example.com","resolver":"192.168.1.1"}}}`,
 	}, "\n") + "\n"
 
 	if err := srv.Serve(context.Background(), strings.NewReader(input)); err != nil {
@@ -39,8 +41,11 @@ func TestMCPStdioServerInitializeAndToolsCall(t *testing.T) {
 	for _, want := range []string{
 		`"protocolVersion":"2025-06-18"`,
 		`"vmlg_compare"`,
+		`"vmlg_dig"`,
 		`"mcp-test-node"`,
 		`"AS4809"`,
+		`target is required`,
+		`HTTP 400`,
 	} {
 		if !strings.Contains(out, want) {
 			t.Fatalf("missing expected MCP output %q in:\n%s", want, out)

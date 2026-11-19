@@ -271,6 +271,32 @@ func (g *Guard) ResolveAndValidateTarget(ctx context.Context, rawTarget string, 
 	}, nil
 }
 
+// ValidateDigQuery validates a DNS query name WITHOUT resolving it: the name
+// must be an IP literal (reverse PTR lookups) or an RFC 1123 hostname /
+// in-addr.arpa / ip6.arpa name. Actual resolution happens on the resolver the
+// user picked, which is policy-checked separately via CheckAddrAllowed.
+func ValidateDigQuery(name string) error {
+	target := strings.TrimSpace(name)
+	target = strings.TrimSuffix(target, ".")
+	if target == "" || len(target) > 253 {
+		return ErrInvalidTarget
+	}
+	if strings.HasPrefix(target, "-") || strings.ContainsAny(target, " \t\r\n/\\?#@;&|$`\"'<>(){}[]!*") {
+		return ErrInvalidTarget
+	}
+	if _, err := netip.ParseAddr(target); err == nil {
+		return nil // IP literal: valid PTR query subject
+	}
+	lower := strings.ToLower(target)
+	if strings.HasSuffix(lower, ".in-addr.arpa") || strings.HasSuffix(lower, ".ip6.arpa") {
+		return nil
+	}
+	if !isValidHostname(target) {
+		return ErrInvalidTarget
+	}
+	return nil
+}
+
 func (g *Guard) CheckAddrAllowed(addr netip.Addr) error {
 	ip := addr.Unmap()
 	if !ip.IsValid() {

@@ -97,6 +97,7 @@ func (n *LocalNode) Descriptor() NodeDescriptor {
 		Capabilities: NodeCapabilities{
 			Ping:      true,
 			MTR:       true,
+			Dig:       true,
 			Speedtest: speedEnabled,
 			TestFiles: testFiles,
 			IPerf3:    iperfOK,
@@ -131,6 +132,18 @@ func (n *LocalNode) MTR(ctx context.Context, clientIP string, req probe.MTRReque
 		defer release()
 	}
 	return probe.RunMTR(ctx, req, n.enricher, onUpdate)
+}
+
+func (n *LocalNode) Dig(ctx context.Context, clientIP string, req probe.DigRequest) (probe.DigResult, error) {
+	if n.guard != nil && n.enforceGuard {
+		cip, _ := netip.ParseAddr(clientIP)
+		release, err := n.guard.AcquireProbe(cip, probe.DigRateTargetAddr(req))
+		if err != nil {
+			return probe.DigResult{}, err
+		}
+		defer release()
+	}
+	return probe.RunDig(ctx, req)
 }
 
 func (n *LocalNode) AcquireIPerf(_ context.Context, clientKey string) (speedtest.IPerfLease, error) {

@@ -64,6 +64,7 @@
         <nav class="tabs" role="tablist">
             <button type="button" class="tab active" data-tab="compare" data-i18n="tab_compare">⚡ Multi-Node Compare</button>
             <button type="button" class="tab" data-tab="diag" data-i18n="tab_diag">🧭 Live MTR &amp; Ping</button>
+            <button type="button" class="tab" data-tab="dig" data-i18n="tab_dig">🔎 DNS Dig</button>
             <button type="button" class="tab" data-tab="speed" data-i18n="tab_speed">🚀 Speedtest &amp; iPerf3</button>
             <button type="button" class="tab" data-tab="bgp" id="tab-btn-bgp" data-i18n="tab_bgp">🌐 BGP &amp; AS-Path</button>
             <button type="button" class="tab" data-tab="share" data-i18n="tab_share">📋 Share Markdown</button>
@@ -100,6 +101,24 @@
                         <option value="icmp">ICMP Ping</option>
                         <option value="tcp">TCP Ping (Port 443)</option>
                     </select>
+                </div>
+
+                <div class="input-group" id="dig-rrtype-group" hidden>
+                    <label for="dig-rrtype-select" data-i18n="dig_rrtype">Record Type</label>
+                    <select id="dig-rrtype-select">
+                        <option value="A">A</option>
+                        <option value="AAAA">AAAA</option>
+                        <option value="CNAME">CNAME</option>
+                        <option value="MX">MX</option>
+                        <option value="NS">NS</option>
+                        <option value="TXT">TXT</option>
+                        <option value="PTR">PTR</option>
+                    </select>
+                </div>
+
+                <div class="input-group" id="dig-resolver-group" hidden>
+                    <label for="dig-resolver-input" data-i18n="dig_resolver">Resolver</label>
+                    <input type="text" id="dig-resolver-input" placeholder="1.1.1.1 (optional)" autocomplete="off" spellcheck="false">
                 </div>
 
                 <div class="form-actions">
@@ -219,7 +238,41 @@
             </div>
         </section>
 
-        <!-- TAB 3: Speedtest, Zero-Disk Files & iPerf3 -->
+        <!-- TAB 3: DNS Dig (full answer section with TTLs) -->
+        <section class="tab-panel" id="panel-dig" hidden>
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <h2 class="card-title">
+                            <span data-i18n="dig_title">DNS Query (dig)</span>
+                            · <span class="accent-text" id="dig-node-label">—</span>
+                        </h2>
+                        <p class="card-desc" data-i18n="dig_desc">Full dig semantics from the node: per-record TTLs, CNAME chains and the complete answer section, with optional custom resolver comparison.</p>
+                    </div>
+                    <span class="engine-pill" id="dig-meta-pill" hidden></span>
+                </div>
+
+                <div class="table-wrap">
+                    <table class="data-table mono-nums">
+                        <thead>
+                            <tr>
+                                <th data-i18n="dig_col_name">Name</th>
+                                <th>TTL</th>
+                                <th>Type</th>
+                                <th data-i18n="dig_col_value">Value</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dig-tbody">
+                            <tr class="empty-row">
+                                <td colspan="4" data-i18n="dig_empty">Enter a domain (or an IP for reverse PTR) and press "Run Probe".</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 4: Speedtest, Zero-Disk Files & iPerf3 -->
         <section class="tab-panel" id="panel-speed" hidden>
             <div class="speed-layout">
                 <!-- HTML5 Interactive Speedtest -->

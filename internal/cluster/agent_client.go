@@ -326,6 +326,21 @@ func (a *AgentClient) handleProbeJob(ctx context.Context, ws *wsSafeConn, reqID 
 		}
 		doneEnv, _ := makeEnvelope(MsgProbeDone, reqID, snap, "")
 		_ = ws.Send(doneEnv)
+
+	case "dig":
+		if p.Dig == nil {
+			errEnv, _ := makeEnvelope(MsgProbeError, reqID, nil, "missing dig request")
+			_ = ws.Send(errEnv)
+			return
+		}
+		res, err := a.localNode.Dig(ctx, p.ClientIP, *p.Dig)
+		if err != nil {
+			errEnv, _ := makeEnvelope(MsgProbeError, reqID, nil, err.Error())
+			_ = ws.Send(errEnv)
+			return
+		}
+		doneEnv, _ := makeEnvelope(MsgProbeDone, reqID, res, "")
+		_ = ws.Send(doneEnv)
 	}
 }
 
