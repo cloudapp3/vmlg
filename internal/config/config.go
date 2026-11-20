@@ -35,6 +35,16 @@ type Config struct {
 	BGP        BGPConfig        `toml:"bgp"`
 	NodeStatus NodeStatusConfig `toml:"node_status"`
 	RPKI       RPKIConfig       `toml:"rpki"`
+	Unlock     UnlockConfig     `toml:"unlock"`
+}
+
+// UnlockConfig gates the streaming-unlock detection panel. Disabled by
+// default: the feature probes third-party services from the node and must be
+// an explicit operator opt-in (ADR-VMLG-002). Pure Go only — no shell scripts.
+type UnlockConfig struct {
+	Enabled         bool `toml:"enabled"`
+	CacheTTLSeconds int  `toml:"cache_ttl_seconds"` // per-node result cache (default 600)
+	TimeoutMs       int  `toml:"timeout_ms"`        // per-service probe timeout (default 8000)
 }
 
 // RPKIConfig enables the optional Routinator-compatible validity data source
@@ -102,6 +112,8 @@ type GuardConfig struct {
 	TargetBurst            int      `toml:"target_burst"`
 	MaxConcurrentProbes    int      `toml:"max_concurrent_probes"`
 	MaxConcurrentSpeedtest int      `toml:"max_concurrent_speedtest"`
+	UnlockRPM              int      `toml:"unlock_rpm"` // stricter-than-probe bucket for unlock checks
+	UnlockBurst            int      `toml:"unlock_burst"`
 }
 
 // NodeStatusConfig controls the public node health panel: coarse load/memory
@@ -244,6 +256,11 @@ func Default(mode string) Config {
 		RPKI: RPKIConfig{
 			RoutinatorURL: "",
 			TimeoutMs:     3000,
+		},
+		Unlock: UnlockConfig{
+			Enabled:         false,
+			CacheTTLSeconds: 600,
+			TimeoutMs:       8000,
 		},
 	}
 }
@@ -538,6 +555,12 @@ func (c *Config) NormalizeAndValidate() error {
 	if c.Guard.MaxConcurrentSpeedtest <= 0 {
 		c.Guard.MaxConcurrentSpeedtest = 4
 	}
+	if c.Guard.UnlockRPM <= 0 {
+		c.Guard.UnlockRPM = 6
+	}
+	if c.Guard.UnlockBurst <= 0 {
+		c.Guard.UnlockBurst = 2
+	}
 
 	if c.Probe.PingMaxCount <= 0 || c.Probe.PingMaxCount > 50 {
 		return fmt.Errorf("probe.ping_max_count must be between 1 and 50 (got %d)", c.Probe.PingMaxCount)
@@ -565,6 +588,12 @@ func (c *Config) NormalizeAndValidate() error {
 	}
 	if c.RPKI.TimeoutMs <= 0 || c.RPKI.TimeoutMs > 3000 {
 		c.RPKI.TimeoutMs = 3000
+	}
+	if c.Unlock.CacheTTLSeconds <= 0 || c.Unlock.CacheTTLSeconds > 3600 {
+		c.Unlock.CacheTTLSeconds = 600
+	}
+	if c.Unlock.TimeoutMs <= 0 || c.Unlock.TimeoutMs > 20000 {
+		c.Unlock.TimeoutMs = 8000
 	}
 
 	if c.IPerf3.Enabled {

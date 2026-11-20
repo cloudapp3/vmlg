@@ -39,6 +39,9 @@ type Server struct {
 	sampleCancel context.CancelFunc
 	rpki         *bgp.RPKIValidator
 	rpkiTimeout  time.Duration
+
+	unlockMu    sync.Mutex
+	unlockCache map[string]probe.UnlockCheckResult
 }
 
 func New(cfg config.Config, logger *slog.Logger) (*Server, error) {
@@ -85,6 +88,8 @@ func New(cfg config.Config, logger *slog.Logger) (*Server, error) {
 		logger:      logger,
 		rpki:        bgp.NewRPKIValidator(cfg.RPKI.RoutinatorURL, time.Duration(cfg.RPKI.TimeoutMs)*time.Millisecond),
 		rpkiTimeout: time.Duration(cfg.RPKI.TimeoutMs) * time.Millisecond,
+
+		unlockCache: make(map[string]probe.UnlockCheckResult),
 	}
 
 	s.metrics = metrics.New(cfg.Mode, cfg.Server.MetricsToken, func() metrics.SnapshotGauge {
@@ -174,6 +179,7 @@ func (s *Server) buildMux() (*http.ServeMux, error) {
 	mux.HandleFunc("GET /api/v1/probe/mtr", s.handleMTRSSE)
 	mux.HandleFunc("GET /api/v1/probe/dig", s.handleDig)
 	mux.HandleFunc("GET /api/v1/probe/http", s.handleHTTPProbe)
+	mux.HandleFunc("GET /api/v1/unlock", s.handleUnlock)
 	mux.HandleFunc("GET /api/v1/probe/compare", s.handleCompareSSE)
 	mux.HandleFunc("GET /api/v1/bgp/route", s.handleBGPRoute)
 	mux.HandleFunc("GET /api/v1/bgp/summary", s.handleBGPSummary)
@@ -233,6 +239,7 @@ func (s *Server) handleMeta(w http.ResponseWriter, r *http.Request) {
 		"default_locale": s.cfg.Server.DefaultLocale,
 		"version":        version.Version,
 		"allow_embed":    s.cfg.Server.AllowEmbed,
+		"unlock_enabled": s.cfg.Unlock.Enabled,
 		"links": map[string]string{
 			"repo_url":        s.cfg.Server.RepoURL,
 			"community_url":   s.cfg.Server.CommunityURL,
@@ -535,6 +542,78 @@ func (s *Server) handleHTTPProbe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, res)
+}
+
+// handleUnlock serves the opt-in streaming-unlock panel: per-node cached
+// five-service verdicts behind a stricter dedicated rate bucket (ADR-VMLG-002).
+func (s *Server) handleUnlock(w http.ResponseWriter, r *http.Request) {
+	s.metrics.IncRequest("unlock")
+
+	if !s.cfg.Unlock.Enabled {
+		writeJSON(w, http.StatusNotImplemented, map[string]string{
+			"error": "unlock detection is disabled (set [unlock] enabled = true to opt in)",
+		})
+		return
+	}
+
+	runner, err := s.registry.GetRunner(strings.TrimSpace(r.URL.Query().Get("node")))
+	if err != nil {
+		status := http.StatusNotFound
+		if errors.Is(err, cluster.ErrNodeOffline) {
+			status = http.StatusServiceUnavailable
+		}
+		writeJSON(w, status, map[string]string{"error": err.Error()})
+		return
+	}
+
+	clientIP := s.guard.ClientIP(r)
+	if err := s.guard.AcquireUnlock(clientIP); err != nil {
+		s.recordGuardError(err)
+		writeJSON(w, http.StatusTooManyRequests, map[string]string{"error": err.Error()})
+		return
+	}
+
+	nodeID := runner.Descriptor().ID
+	now := time.Now().Unix()
+
+	s.unlockMu.Lock()
+	if cached, ok := s.unlockCache[nodeID]; ok {
+		age := now - cached.CheckedAt
+		if age >= 0 && age < int64(s.cfg.Unlock.CacheTTLSeconds) {
+			s.unlockMu.Unlock()
+			s.metrics.IncRequest("unlock_cache_hit")
+			writeJSON(w, http.StatusOK, map[string]any{
+				"node_id":           nodeID,
+				"results":           cached.Results,
+				"checked_at":        cached.CheckedAt,
+				"cache_age_seconds": age,
+				"cached":            true,
+			})
+			return
+		}
+	}
+	s.unlockMu.Unlock()
+
+	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+	defer cancel()
+
+	res, err := runner.Unlock(ctx, clientIP.String(), probe.UnlockRequest{TimeoutMs: s.cfg.Unlock.TimeoutMs})
+	if err != nil {
+		writeJSON(w, http.StatusBadGateway, map[string]string{"error": err.Error()})
+		return
+	}
+
+	s.unlockMu.Lock()
+	s.unlockCache[nodeID] = res
+	s.unlockMu.Unlock()
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"node_id":           nodeID,
+		"results":           res.Results,
+		"checked_at":        res.CheckedAt,
+		"cache_age_seconds": 0,
+		"cached":            false,
+	})
 }
 
 func (s *Server) handleCompareSSE(w http.ResponseWriter, r *http.Request) {

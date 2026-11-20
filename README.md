@@ -36,6 +36,7 @@
   - **Zero Shell Execution**: Every input is strictly parsed via `net/netip` and RFC 1123 hostname rules.
   - **SSRF & DNS-Rebinding Protection**: Blocks loopback, RFC1918 private, CGNAT, link-local, and cloud metadata (`169.254.169.254`) targets across all resolved DNS records (customizable via `allowed_reserved_cidrs` for DN42).
   - **Dual-Dimension Token Buckets (`Per-Client` + `Per-Target`)**: Rate-limits both individual client IPs (`/64` for IPv6) and **destination `/24` (IPv4) / `/48` (IPv6) subnets** globally—preventing distributed DDoS reflection/amplification against a single victim.
+- **Opt-in Streaming Unlock Check**: fixed five-service availability probe (YouTube region / Netflix / Disney+ / ChatGPT / TikTok) from each node's egress via public no-login endpoints — pure Go, zero shell (CI-enforced), per-node 10-minute cached, behind a stricter dedicated rate bucket, and never exposed through MCP. Disabled by default (`[unlock] enabled = true` to opt in) because it targets third-party services: enable only where your providers' terms of service allow it.
 - **Observability, MCP Server & Redacted Markdown Sharing**
   - Built-in Prometheus `/metrics` endpoint (with optional Bearer token auth).
   - Built-in `vmlg mcp` stdio JSON-RPC server (`vmlg_list_nodes`, `vmlg_ping`, `vmlg_mtr`, `vmlg_compare`, `vmlg_bgp_route`) for both local execution and remote `-hub-http` multi-node portals.
@@ -207,6 +208,7 @@ sudo sysctl -w net.ipv4.ping_group_range="0 2147483647"
 | `GET /api/v1/bgp/route` | BGP RIB route lookup (paths, AS-Path, LocalPref, Communities) with optional RPKI validity badge when `[rpki] routinator_url` is configured |
 | `GET /api/v1/bgp/summary` | BGP neighbor session summary |
 | `POST /api/v1/iperf3/lease` | Allocate an ephemeral one-shot iPerf3 server port lease |
+| `GET /api/v1/unlock` | Opt-in streaming unlock check (YouTube/Netflix/Disney+/ChatGPT/TikTok) from a node, per-node cached, strict rate limit — disabled unless `[unlock] enabled = true` |
 | `GET /api/v1/speedtest/{ping,download}` | HTML5 speedtest latency probe and incompressible download stream |
 | `POST /api/v1/speedtest/upload` | HTML5 speedtest zero-disk upload sink |
 | `GET /speedtest/files/{name}` | Zero-disk in-memory test files (`10MB.bin`, `100MB.bin`, `1GB.bin`) |

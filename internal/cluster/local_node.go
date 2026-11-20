@@ -105,6 +105,7 @@ func (n *LocalNode) Descriptor() NodeDescriptor {
 			MTR:       true,
 			Dig:       true,
 			HTTP:      true,
+			Unlock:    n.cfg.Unlock.Enabled,
 			Speedtest: speedEnabled,
 			TestFiles: testFiles,
 			IPerf3:    iperfOK,
@@ -169,6 +170,16 @@ func (n *LocalNode) HTTP(ctx context.Context, clientIP string, req probe.HTTPReq
 		}
 	}
 	return probe.RunHTTP(ctx, req, policy)
+}
+
+func (n *LocalNode) Unlock(ctx context.Context, clientIP string, req probe.UnlockRequest) (probe.UnlockCheckResult, error) {
+	if n.guard != nil && n.enforceGuard {
+		cip, _ := netip.ParseAddr(clientIP)
+		if err := n.guard.AcquireUnlock(cip); err != nil {
+			return probe.UnlockCheckResult{}, err
+		}
+	}
+	return probe.RunUnlockChecks(ctx, req.TimeoutMs, req.Targets), nil
 }
 
 func (n *LocalNode) AcquireIPerf(_ context.Context, clientKey string) (speedtest.IPerfLease, error) {

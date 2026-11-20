@@ -287,6 +287,46 @@ func (r *remoteNodeRunner) HTTP(ctx context.Context, clientIP string, req probe.
 	}
 }
 
+func (r *remoteNodeRunner) Unlock(ctx context.Context, clientIP string, req probe.UnlockRequest) (probe.UnlockCheckResult, error) {
+	reqID := r.reg.nextReqID()
+	ch, err := r.session.addPending(reqID)
+	if err != nil {
+		return probe.UnlockCheckResult{}, err
+	}
+	defer r.session.removePending(reqID)
+
+	env, err := makeEnvelope(MsgProbeStart, reqID, ProbeStartPayload{
+		Kind:     "unlock",
+		ClientIP: clientIP,
+		Unlock:   &req,
+	}, "")
+	if err != nil {
+		return probe.UnlockCheckResult{}, err
+	}
+	if err := r.session.ws.Send(env); err != nil {
+		return probe.UnlockCheckResult{}, ErrNodeOffline
+	}
+
+	select {
+	case <-ctx.Done():
+		cancelEnv, _ := makeEnvelope(MsgProbeCancel, reqID, nil, "")
+		_ = r.session.ws.Send(cancelEnv)
+		return probe.UnlockCheckResult{}, ctx.Err()
+	case resp, ok := <-ch:
+		if !ok {
+			return probe.UnlockCheckResult{}, ErrNodeOffline
+		}
+		if resp.Error != "" {
+			return probe.UnlockCheckResult{}, errors.New(resp.Error)
+		}
+		var res probe.UnlockCheckResult
+		if err := json.Unmarshal(resp.Payload, &res); err != nil {
+			return probe.UnlockCheckResult{}, err
+		}
+		return res, nil
+	}
+}
+
 func (r *remoteNodeRunner) AcquireIPerf(ctx context.Context, clientKey string) (speedtest.IPerfLease, error) {
 	reqID := r.reg.nextReqID()
 	ch, err := r.session.addPending(reqID)

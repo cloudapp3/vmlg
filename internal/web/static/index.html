@@ -68,6 +68,7 @@
             <button type="button" class="tab" data-tab="http" data-i18n="tab_http">🔗 HTTP Probe</button>
             <button type="button" class="tab" data-tab="speed" data-i18n="tab_speed">🚀 Speedtest &amp; iPerf3</button>
             <button type="button" class="tab" data-tab="bgp" id="tab-btn-bgp" data-i18n="tab_bgp">🌐 BGP &amp; AS-Path</button>
+            <button type="button" class="tab" data-tab="unlock" id="tab-btn-unlock" hidden data-i18n="tab_unlock">📺 Unlock Check</button>
             <button type="button" class="tab" data-tab="share" data-i18n="tab_share">📋 Share Markdown</button>
         </nav>
 
@@ -494,7 +495,44 @@
             </div>
         </section>
 
-        <!-- TAB 5: Redacted Share Markdown & BBCode -->
+        <!-- TAB 6: Streaming Unlock Check (opt-in, hidden unless unlock_enabled) -->
+        <section class="tab-panel" id="panel-unlock" hidden>
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <h2 class="card-title">
+                            <span data-i18n="unlock_title">Streaming Unlock Check</span>
+                            · <span class="accent-text" id="unlock-node-label">—</span>
+                        </h2>
+                        <p class="card-desc" data-i18n="unlock_desc">Fixed five-service availability probe from this node's egress (public no-login endpoints, pure Go). Results are cached per node.</p>
+                    </div>
+                    <div class="form-actions">
+                        <span class="muted-text mono" id="unlock-cache-age"></span>
+                        <button type="button" class="btn-primary" id="btn-run-unlock" data-i18n="unlock_run">Run Check</button>
+                    </div>
+                </div>
+
+                <div class="table-wrap">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th data-i18n="unlock_service">Service</th>
+                                <th data-i18n="unlock_status">Status</th>
+                                <th data-i18n="unlock_region">Region</th>
+                                <th>ms</th>
+                            </tr>
+                        </thead>
+                        <tbody id="unlock-tbody">
+                            <tr class="empty-row">
+                                <td colspan="4" data-i18n="unlock_empty">Press "Run Check" to probe YouTube, Netflix, Disney+, ChatGPT and TikTok from this node.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 7: Redacted Share Markdown & BBCode -->
         <section class="tab-panel" id="panel-share" hidden>
             <div class="card">
                 <div class="card-header">

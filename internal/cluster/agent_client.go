@@ -364,6 +364,21 @@ func (a *AgentClient) handleProbeJob(ctx context.Context, ws *wsSafeConn, reqID 
 		}
 		doneEnv, _ := makeEnvelope(MsgProbeDone, reqID, res, "")
 		_ = ws.Send(doneEnv)
+
+	case "unlock":
+		if p.Unlock == nil {
+			errEnv, _ := makeEnvelope(MsgProbeError, reqID, nil, "missing unlock request")
+			_ = ws.Send(errEnv)
+			return
+		}
+		res, err := a.localNode.Unlock(ctx, p.ClientIP, *p.Unlock)
+		if err != nil {
+			errEnv, _ := makeEnvelope(MsgProbeError, reqID, nil, err.Error())
+			_ = ws.Send(errEnv)
+			return
+		}
+		doneEnv, _ := makeEnvelope(MsgProbeDone, reqID, res, "")
+		_ = ws.Send(doneEnv)
 	}
 }
 

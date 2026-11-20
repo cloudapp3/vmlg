@@ -72,10 +72,13 @@ type Guard struct {
 	clientBurst float64
 	targetRate  float64 // tokens per second
 	targetBurst float64
+	unlockRate  float64 // stricter dedicated bucket for unlock checks
+	unlockBurst float64
 
 	mu            sync.Mutex
 	clientBuckets map[string]*tokenBucket
 	targetBuckets map[string]*tokenBucket
+	unlockBuckets map[string]*tokenBucket
 	lastCleanup   time.Time
 	nowFn         func() time.Time
 
@@ -103,6 +106,8 @@ func New(cfg config.GuardConfig, trustedProxyCIDRs []string) (*Guard, error) {
 	clientBurst := max(cfg.ClientBurst, 1)
 	targetRPM := max(cfg.TargetRPM, 1)
 	targetBurst := max(cfg.TargetBurst, 1)
+	unlockRPM := max(cfg.UnlockRPM, 1)
+	unlockBurst := max(cfg.UnlockBurst, 1)
 
 	return &Guard{
 		allowPrivate:   cfg.AllowPrivateTargets,
@@ -114,8 +119,11 @@ func New(cfg config.GuardConfig, trustedProxyCIDRs []string) (*Guard, error) {
 		clientBurst:    float64(clientBurst),
 		targetRate:     float64(targetRPM) / 60.0,
 		targetBurst:    float64(targetBurst),
+		unlockRate:     float64(unlockRPM) / 60.0,
+		unlockBurst:    float64(unlockBurst),
 		clientBuckets:  make(map[string]*tokenBucket),
 		targetBuckets:  make(map[string]*tokenBucket),
+		unlockBuckets:  make(map[string]*tokenBucket),
 		lastCleanup:    time.Now(),
 		nowFn:          time.Now,
 		probeSem:       make(chan struct{}, maxProbes),
@@ -362,6 +370,22 @@ func (g *Guard) AcquireProbe(clientIP netip.Addr, targetIP netip.Addr) (func(), 
 	}
 }
 
+// AcquireUnlock enforces a stricter dedicated per-client token bucket for
+// streaming-unlock checks (5 outbound requests per invocation, third-party
+// ToS gray zone — deliberately well below the probe tier).
+func (g *Guard) AcquireUnlock(clientIP netip.Addr) error {
+	now := g.nowFn()
+	clientKey := clientBucketKey(clientIP)
+	g.mu.Lock()
+	g.cleanupLocked(now)
+	if clientKey != "" && !allowToken(g.unlockBuckets, clientKey, g.unlockRate, g.unlockBurst, now) {
+		g.mu.Unlock()
+		return ErrClientRateLimited
+	}
+	g.mu.Unlock()
+	return nil
+}
+
 // AcquireSpeedtest enforces Per-Client rate limit and speedtest concurrency limit.
 func (g *Guard) AcquireSpeedtest(clientIP netip.Addr, checkRate bool) (func(), error) {
 	if checkRate {
@@ -422,6 +446,11 @@ func (g *Guard) cleanupLocked(now time.Time) {
 	for k, b := range g.targetBuckets {
 		if b.lastSeen.Before(cutoff) {
 			delete(g.targetBuckets, k)
+		}
+	}
+	for k, b := range g.unlockBuckets {
+		if b.lastSeen.Before(cutoff) {
+			delete(g.unlockBuckets, k)
 		}
 	}
 }

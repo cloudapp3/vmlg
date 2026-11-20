@@ -62,6 +62,16 @@ sample_seconds = 15
 # Validity query timeout in milliseconds (500-3000, hard-capped at 3s).
 timeout_ms = 3000
 
+[unlock]
+# Streaming unlock detection is OFF by default: it probes third-party services
+# (YouTube/Netflix/Disney+/ChatGPT/TikTok, public no-login endpoints, pure Go)
+# from the node egress and is a deliberate operator opt-in. Mind provider ToS.
+enabled = false
+# Per-node result cache TTL in seconds (default 600 = 10 minutes).
+cache_ttl_seconds = 600
+# Per-service probe timeout in milliseconds (1000-20000).
+timeout_ms = 8000
+
 [speedtest]
 enabled = true
 max_rate_mbps = 0 # 0 = unlimited; set e.g. 500 to cap per-stream rate at 500 Mbps

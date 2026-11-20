@@ -34,6 +34,15 @@ const I18N = {
         http_truncated: '已截断（超 1MiB）',
         rpki_title: 'RPKI ROA 验证',
         rpki_no_roa: '该前缀+Origin 无覆盖 ROA（NotFound）',
+        tab_unlock: '📺 流媒体解锁',
+        unlock_title: '流媒体解锁检测',
+        unlock_desc: '从本节点出口探测固定五项服务可用性（公开无登录端点，纯 Go）。结果按节点缓存。',
+        unlock_empty: '点击「立即检测」从本节点探测 YouTube / Netflix / Disney+ / ChatGPT / TikTok。',
+        unlock_run: '立即检测',
+        unlock_cache_age: '缓存于',
+        unlock_service: '服务',
+        unlock_status: '状态',
+        unlock_region: '区域',
         start_test: '开始测试',
         stop_test: '停止',
         compare_heading: '全球节点并发延迟与回程线路对比',
@@ -117,6 +126,15 @@ const I18N = {
         http_truncated: 'Truncated (>1MiB)',
         rpki_title: 'RPKI ROA Validation',
         rpki_no_roa: 'No covering ROA for this prefix + origin (NotFound)',
+        tab_unlock: '📺 Unlock Check',
+        unlock_title: 'Streaming Unlock Check',
+        unlock_desc: "Fixed five-service availability probe from this node's egress (public no-login endpoints, pure Go). Results are cached per node.",
+        unlock_empty: 'Press "Run Check" to probe YouTube / Netflix / Disney+ / ChatGPT / TikTok from this node.',
+        unlock_run: 'Run Check',
+        unlock_cache_age: 'cached',
+        unlock_service: 'Service',
+        unlock_status: 'Status',
+        unlock_region: 'Region',
         start_test: 'Run Probe',
         stop_test: 'Stop',
         compare_heading: 'Multi-Region Latency & Return Route Comparison',
@@ -200,6 +218,15 @@ const I18N = {
         http_truncated: '已截斷（超 1MiB）',
         rpki_title: 'RPKI ROA 驗證',
         rpki_no_roa: '該前綴+Origin 無覆蓋 ROA（NotFound）',
+        tab_unlock: '📺 串流媒體解鎖',
+        unlock_title: '串流媒體解鎖檢測',
+        unlock_desc: '從本節點出口探測固定五項服務可用性（公開無登入端點，純 Go）。結果按節點快取。',
+        unlock_empty: '點擊「立即檢測」從本節點探測 YouTube / Netflix / Disney+ / ChatGPT / TikTok。',
+        unlock_run: '立即檢測',
+        unlock_cache_age: '快取於',
+        unlock_service: '服務',
+        unlock_status: '狀態',
+        unlock_region: '區域',
         start_test: '開始測試',
         stop_test: '停止',
         compare_heading: '全球節點並發延遲與回程線路對比',
@@ -283,6 +310,15 @@ const I18N = {
         http_truncated: '切り詰め（>1MiB）',
         rpki_title: 'RPKI ROA 検証',
         rpki_no_roa: 'このプレフィックス+Origin をカバーする ROA はありません（NotFound）',
+        tab_unlock: '📺 ストリーミング判定',
+        unlock_title: 'ストリーミングアンロック判定',
+        unlock_desc: 'このノードの出口から固定 5 サービスの可用性を probing（公開・ログイン不要エンドポイント、純 Go）。結果はノード単位でキャッシュ。',
+        unlock_empty: '「判定実行」で YouTube / Netflix / Disney+ / ChatGPT / TikTok をこのノードから判定します。',
+        unlock_run: '判定実行',
+        unlock_cache_age: 'キャッシュ',
+        unlock_service: 'サービス',
+        unlock_status: 'ステータス',
+        unlock_region: '地域',
         start_test: '測定開始',
         stop_test: '停止',
         compare_heading: '全リージョン同時レイテンシ・復路ルート比較',
@@ -422,6 +458,11 @@ async function loadMeta(preserveSelection = false) {
     document.getElementById('portal-subtitle').textContent = meta.subtitle || '';
     document.getElementById('portal-mode').textContent = (meta.mode || 'standalone').toUpperCase();
     document.getElementById('footer-version').textContent = meta.version ? `v${meta.version}` : '';
+
+    // Streaming unlock panel is opt-in: the tab only exists when the hub
+    // advertises unlock_enabled (set [unlock] enabled = true).
+    const unlockTab = document.getElementById('tab-btn-unlock');
+    if (unlockTab) unlockTab.hidden = !meta.unlock_enabled;
 
     // Populate footer attribution & community links
     const links = meta.links || {};
@@ -564,6 +605,56 @@ function buildDeepLinkURL(includeEmbed = false) {
     return u.toString();
 }
 
+// Opt-in streaming unlock check: fixed five services from the selected node.
+async function runUnlockCheck() {
+    const node = selectedNode();
+    if (!node) return;
+    const btn = document.getElementById('btn-run-unlock');
+    btn.disabled = true;
+    document.getElementById('unlock-cache-age').textContent = '';
+    try {
+        const res = await fetch(`/api/v1/unlock?node=${encodeURIComponent(node.id)}`);
+        const data = await res.json();
+        if (!res.ok) {
+            document.getElementById('unlock-tbody').innerHTML =
+                `<tr class="empty-row"><td colspan="4">${escapeHTML(data.error || 'unlock check failed')}</td></tr>`;
+            return;
+        }
+        renderUnlockResult(data);
+    } catch (e) {
+        document.getElementById('unlock-tbody').innerHTML =
+            `<tr class="empty-row"><td colspan="4">${escapeHTML(e.message)}</td></tr>`;
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+function renderUnlockResult(data) {
+    const age = document.getElementById('unlock-cache-age');
+    age.textContent = data.cached ? `${t('unlock_cache_age')}: ${data.cache_age_seconds}s` : '';
+
+    const rows = (data.results || []).map((r) => {
+        let badgeClass = 'line-badge subtle';
+        let label = (r.status || '').toUpperCase();
+        if (r.status === 'unlocked' || r.status === 'available') badgeClass = 'line-badge premium';
+        if (r.status === 'locked' || r.status === 'unavailable') {
+            badgeClass = 'line-badge';
+            label += r.error ? '' : '';
+        }
+        const title = r.error ? ` title="${escapeHTML(r.error)}"` : '';
+        return `
+            <tr>
+                <td>${escapeHTML(r.service)}</td>
+                <td><span class="${badgeClass}"${title}>${escapeHTML(label)}</span></td>
+                <td class="mono">${escapeHTML(r.region || '—')}</td>
+                <td class="mono">${escapeHTML(String(r.elapsed_ms ?? '—'))}</td>
+            </tr>
+        `;
+    }).join('');
+    document.getElementById('unlock-tbody').innerHTML = rows ||
+        `<tr class="empty-row"><td colspan="4">—</td></tr>`;
+}
+
 function fmtUptime(seconds) {
     const s = Number(seconds) || 0;
     if (s < 60) return `${s}s`;
@@ -644,6 +735,7 @@ function syncSelectedNodeUI() {
     document.getElementById('bgp-node-label').textContent = label;
     document.getElementById('dig-node-label').textContent = label;
     document.getElementById('http-node-label').textContent = label;
+    document.getElementById('unlock-node-label').textContent = label;
 
     // BGP capability
     const bgpOK = Boolean(node && node.online && node.capabilities && node.capabilities.bgp);
@@ -696,8 +788,9 @@ function switchTab(tabName) {
     document.querySelectorAll('.tab').forEach((b) => {
         b.classList.toggle('active', b.getAttribute('data-tab') === tabName);
     });
-    ['compare', 'diag', 'dig', 'http', 'speed', 'bgp', 'share'].forEach((id) => {
-        document.getElementById(`panel-${id}`).hidden = id !== tabName;
+    ['compare', 'diag', 'dig', 'http', 'speed', 'bgp', 'unlock', 'share'].forEach((id) => {
+        const panel = document.getElementById(`panel-${id}`);
+        if (panel) panel.hidden = id !== tabName;
     });
     const showTargetBar = tabName === 'compare' || tabName === 'diag' || tabName === 'dig' || tabName === 'http' || tabName === 'bgp';
     document.getElementById('target-bar').hidden = !showTargetBar;
@@ -1873,6 +1966,8 @@ function bindEvents() {
     });
 
     document.getElementById('btn-bgp-summary').addEventListener('click', loadBGPSummary);
+
+    document.getElementById('btn-run-unlock').addEventListener('click', runUnlockCheck);
 
     document.getElementById('btn-stop-probe').addEventListener('click', stopActiveProbe);
 

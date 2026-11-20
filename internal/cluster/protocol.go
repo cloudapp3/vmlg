@@ -31,6 +31,7 @@ type NodeCapabilities struct {
 	MTR       bool     `json:"mtr"`
 	Dig       bool     `json:"dig"`
 	HTTP      bool     `json:"http"`
+	Unlock    bool     `json:"unlock,omitempty"`
 	Speedtest bool     `json:"speedtest"`
 	TestFiles []string `json:"test_files,omitempty"`
 	IPerf3    bool     `json:"iperf3"`
@@ -86,12 +87,13 @@ type LoadSample struct {
 }
 
 type ProbeStartPayload struct {
-	Kind     string             `json:"kind"` // "ping" | "mtr" | "dig" | "http"
-	ClientIP string             `json:"client_ip,omitempty"`
-	Ping     *probe.PingRequest `json:"ping,omitempty"`
-	MTR      *probe.MTRRequest  `json:"mtr,omitempty"`
-	Dig      *probe.DigRequest  `json:"dig,omitempty"`
-	HTTP     *probe.HTTPRequest `json:"http,omitempty"`
+	Kind     string               `json:"kind"` // "ping" | "mtr" | "dig" | "http" | "unlock"
+	ClientIP string               `json:"client_ip,omitempty"`
+	Ping     *probe.PingRequest   `json:"ping,omitempty"`
+	MTR      *probe.MTRRequest    `json:"mtr,omitempty"`
+	Dig      *probe.DigRequest    `json:"dig,omitempty"`
+	HTTP     *probe.HTTPRequest   `json:"http,omitempty"`
+	Unlock   *probe.UnlockRequest `json:"unlock,omitempty"`
 }
 
 type IPerfRequestPayload struct {
@@ -132,6 +134,7 @@ type NodeRunner interface {
 	MTR(ctx context.Context, clientIP string, req probe.MTRRequest, onUpdate func(probe.MTRSnapshot)) (probe.MTRSnapshot, error)
 	Dig(ctx context.Context, clientIP string, req probe.DigRequest) (probe.DigResult, error)
 	HTTP(ctx context.Context, clientIP string, req probe.HTTPRequest) (probe.HTTPResult, error)
+	Unlock(ctx context.Context, clientIP string, req probe.UnlockRequest) (probe.UnlockCheckResult, error)
 	AcquireIPerf(ctx context.Context, clientKey string) (speedtest.IPerfLease, error)
 	BGPRoute(ctx context.Context, target string) (bgp.RouteLookupResult, error)
 	BGPSummary(ctx context.Context) (bgp.SummaryResult, error)
