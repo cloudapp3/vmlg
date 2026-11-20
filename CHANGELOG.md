@@ -2,7 +2,7 @@
 
 All notable changes to **vmlg** will be documented in this file.
 
-## [Unreleased]
+## [v0.2.0] - 2026-11-20
 
 ### Added
 
