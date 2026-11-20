@@ -37,6 +37,8 @@ type Server struct {
 	logger       *slog.Logger
 	handler      http.Handler
 	sampleCancel context.CancelFunc
+	rpki         *bgp.RPKIValidator
+	rpkiTimeout  time.Duration
 }
 
 func New(cfg config.Config, logger *slog.Logger) (*Server, error) {
@@ -74,13 +76,15 @@ func New(cfg config.Config, logger *slog.Logger) (*Server, error) {
 	reg := cluster.NewRegistry(cfg.Hub.AgentToken, cfg.Hub.SigningSecret, ttl, localRunner, logger)
 
 	s := &Server{
-		cfg:       cfg,
-		guard:     g,
-		enricher:  enricher,
-		registry:  reg,
-		iperf:     ipm,
-		speedtest: spHandler,
-		logger:    logger,
+		cfg:         cfg,
+		guard:       g,
+		enricher:    enricher,
+		registry:    reg,
+		iperf:       ipm,
+		speedtest:   spHandler,
+		logger:      logger,
+		rpki:        bgp.NewRPKIValidator(cfg.RPKI.RoutinatorURL, time.Duration(cfg.RPKI.TimeoutMs)*time.Millisecond),
+		rpkiTimeout: time.Duration(cfg.RPKI.TimeoutMs) * time.Millisecond,
 	}
 
 	s.metrics = metrics.New(cfg.Mode, cfg.Server.MetricsToken, func() metrics.SnapshotGauge {
@@ -722,6 +726,18 @@ func (s *Server) handleBGPRoute(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, status, map[string]string{"error": err.Error()})
 		return
 	}
+
+	// Optional RPKI validity badge for the best path; degradation never
+	// affects the BGP result itself (ADR-VMLG-003).
+	if s.rpki != nil {
+		if origin, prefix := bgp.BestPathOriginASN(res); origin != "" && prefix != "" {
+			vctx, vcancel := context.WithTimeout(r.Context(), s.rpkiTimeout)
+			val := s.rpki.Validate(vctx, origin, prefix)
+			vcancel()
+			res.RPKI = &val
+		}
+	}
+
 	writeJSON(w, http.StatusOK, res)
 }
 

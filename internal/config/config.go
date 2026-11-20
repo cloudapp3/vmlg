@@ -34,6 +34,14 @@ type Config struct {
 	IPerf3     IPerf3Config     `toml:"iperf3"`
 	BGP        BGPConfig        `toml:"bgp"`
 	NodeStatus NodeStatusConfig `toml:"node_status"`
+	RPKI       RPKIConfig       `toml:"rpki"`
+}
+
+// RPKIConfig enables the optional Routinator-compatible validity data source
+// for the BGP route panel. Empty routinator_url = feature entirely absent.
+type RPKIConfig struct {
+	RoutinatorURL string `toml:"routinator_url"`
+	TimeoutMs     int    `toml:"timeout_ms"`
 }
 
 type ServerConfig struct {
@@ -232,6 +240,10 @@ func Default(mode string) Config {
 		NodeStatus: NodeStatusConfig{
 			Public:     true,
 			SampleSecs: 15,
+		},
+		RPKI: RPKIConfig{
+			RoutinatorURL: "",
+			TimeoutMs:     3000,
 		},
 	}
 }
@@ -550,6 +562,9 @@ func (c *Config) NormalizeAndValidate() error {
 	}
 	if c.NodeStatus.SampleSecs <= 0 || c.NodeStatus.SampleSecs > 60 {
 		c.NodeStatus.SampleSecs = 15
+	}
+	if c.RPKI.TimeoutMs <= 0 || c.RPKI.TimeoutMs > 3000 {
+		c.RPKI.TimeoutMs = 3000
 	}
 
 	if c.IPerf3.Enabled {

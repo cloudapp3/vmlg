@@ -40,12 +40,13 @@ type RoutePath struct {
 }
 
 type RouteLookupResult struct {
-	Target    string      `json:"target"`
-	Prefix    string      `json:"prefix,omitempty"`
-	Driver    string      `json:"driver"`
-	RouterASN string      `json:"router_asn,omitempty"`
-	Paths     []RoutePath `json:"paths"`
-	RawOutput string      `json:"raw_output,omitempty"`
+	Target    string        `json:"target"`
+	Prefix    string        `json:"prefix,omitempty"`
+	Driver    string        `json:"driver"`
+	RouterASN string        `json:"router_asn,omitempty"`
+	Paths     []RoutePath   `json:"paths"`
+	RawOutput string        `json:"raw_output,omitempty"`
+	RPKI      *RPKIValidity `json:"rpki,omitempty"` // only when [rpki] routinator_url is configured
 }
 
 type PeerSession struct {

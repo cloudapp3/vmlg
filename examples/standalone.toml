@@ -55,6 +55,13 @@ public = true
 # Load sparkline sampling interval in seconds (5-60, default 15, keeps 1h in memory).
 sample_seconds = 15
 
+[rpki]
+# Optional Routinator-compatible validity API for the BGP route panel
+# (e.g. "http://127.0.0.1:8323" or a public instance). Empty = feature absent.
+# routinator_url = "http://127.0.0.1:8323"
+# Validity query timeout in milliseconds (500-3000, hard-capped at 3s).
+timeout_ms = 3000
+
 [speedtest]
 enabled = true
 max_rate_mbps = 0 # 0 = unlimited; set e.g. 500 to cap per-stream rate at 500 Mbps

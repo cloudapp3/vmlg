@@ -32,6 +32,8 @@ const I18N = {
         http_col_value: '值',
         http_tls: 'TLS 证书',
         http_truncated: '已截断（超 1MiB）',
+        rpki_title: 'RPKI ROA 验证',
+        rpki_no_roa: '该前缀+Origin 无覆盖 ROA（NotFound）',
         start_test: '开始测试',
         stop_test: '停止',
         compare_heading: '全球节点并发延迟与回程线路对比',
@@ -113,6 +115,8 @@ const I18N = {
         http_col_value: 'Value',
         http_tls: 'TLS Certificate',
         http_truncated: 'Truncated (>1MiB)',
+        rpki_title: 'RPKI ROA Validation',
+        rpki_no_roa: 'No covering ROA for this prefix + origin (NotFound)',
         start_test: 'Run Probe',
         stop_test: 'Stop',
         compare_heading: 'Multi-Region Latency & Return Route Comparison',
@@ -194,6 +198,8 @@ const I18N = {
         http_col_value: '值',
         http_tls: 'TLS 憑證',
         http_truncated: '已截斷（超 1MiB）',
+        rpki_title: 'RPKI ROA 驗證',
+        rpki_no_roa: '該前綴+Origin 無覆蓋 ROA（NotFound）',
         start_test: '開始測試',
         stop_test: '停止',
         compare_heading: '全球節點並發延遲與回程線路對比',
@@ -275,6 +281,8 @@ const I18N = {
         http_col_value: '値',
         http_tls: 'TLS 証明書',
         http_truncated: '切り詰め（>1MiB）',
+        rpki_title: 'RPKI ROA 検証',
+        rpki_no_roa: 'このプレフィックス+Origin をカバーする ROA はありません（NotFound）',
         start_test: '測定開始',
         stop_test: '停止',
         compare_heading: '全リージョン同時レイテンシ・復路ルート比較',
@@ -1466,6 +1474,43 @@ async function loadBGPSummary() {
     }
 }
 
+// RPKI validity badge for the best path (only present when routinator is configured).
+function renderRPKIBadge(rpki) {
+    const banner = document.getElementById('bgp-rpki-banner');
+    const badge = document.getElementById('bgp-rpki-badge');
+    const detail = document.getElementById('bgp-rpki-detail');
+    if (!rpki || !rpki.state) {
+        banner.hidden = true;
+        return;
+    }
+    banner.hidden = false;
+    const vrpText = (rpki.vrps || [])
+        .map((v) => `${v.asn} · ${v.prefix} · max /${v.max_length || '?'}`)
+        .join('  |  ');
+    switch (rpki.state) {
+        case 'valid':
+            badge.textContent = 'VALID';
+            badge.className = 'line-badge premium';
+            detail.textContent = vrpText;
+            break;
+        case 'invalid':
+            badge.textContent = 'INVALID';
+            badge.className = 'line-badge';
+            badge.style.cssText = 'background:#dc2626;color:#fff';
+            detail.textContent = `${rpki.reason ? escapeHTML(rpki.reason) + ' — ' : ''}${escapeHTML(vrpText)}`;
+            break;
+        case 'notfound':
+            badge.textContent = 'NOT FOUND';
+            badge.className = 'line-badge subtle';
+            detail.textContent = t('rpki_no_roa');
+            break;
+        default: // unavailable
+            badge.textContent = 'UNAVAILABLE';
+            badge.className = 'line-badge subtle';
+            detail.textContent = escapeHTML(rpki.reason || '');
+    }
+}
+
 function renderBGPRouteResult(data, node) {
     const paths = data.paths || [];
     const svgWrap = document.getElementById('bgp-svg-wrap');
@@ -1507,6 +1552,8 @@ function renderBGPRouteResult(data, node) {
         svgWrap.hidden = true;
         pathsWrap.hidden = true;
     }
+
+    renderRPKIBadge(data.rpki);
 
     if (data.raw_output) {
         document.getElementById('bgp-raw-pre').textContent = data.raw_output;
