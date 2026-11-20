@@ -247,6 +247,46 @@ func (r *remoteNodeRunner) Dig(ctx context.Context, clientIP string, req probe.D
 	}
 }
 
+func (r *remoteNodeRunner) HTTP(ctx context.Context, clientIP string, req probe.HTTPRequest) (probe.HTTPResult, error) {
+	reqID := r.reg.nextReqID()
+	ch, err := r.session.addPending(reqID)
+	if err != nil {
+		return probe.HTTPResult{}, err
+	}
+	defer r.session.removePending(reqID)
+
+	env, err := makeEnvelope(MsgProbeStart, reqID, ProbeStartPayload{
+		Kind:     "http",
+		ClientIP: clientIP,
+		HTTP:     &req,
+	}, "")
+	if err != nil {
+		return probe.HTTPResult{}, err
+	}
+	if err := r.session.ws.Send(env); err != nil {
+		return probe.HTTPResult{}, ErrNodeOffline
+	}
+
+	select {
+	case <-ctx.Done():
+		cancelEnv, _ := makeEnvelope(MsgProbeCancel, reqID, nil, "")
+		_ = r.session.ws.Send(cancelEnv)
+		return probe.HTTPResult{}, ctx.Err()
+	case resp, ok := <-ch:
+		if !ok {
+			return probe.HTTPResult{}, ErrNodeOffline
+		}
+		if resp.Error != "" {
+			return probe.HTTPResult{}, errors.New(resp.Error)
+		}
+		var res probe.HTTPResult
+		if err := json.Unmarshal(resp.Payload, &res); err != nil {
+			return probe.HTTPResult{}, err
+		}
+		return res, nil
+	}
+}
+
 func (r *remoteNodeRunner) AcquireIPerf(ctx context.Context, clientKey string) (speedtest.IPerfLease, error) {
 	reqID := r.reg.nextReqID()
 	ch, err := r.session.addPending(reqID)

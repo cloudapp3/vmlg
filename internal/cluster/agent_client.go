@@ -341,6 +341,21 @@ func (a *AgentClient) handleProbeJob(ctx context.Context, ws *wsSafeConn, reqID 
 		}
 		doneEnv, _ := makeEnvelope(MsgProbeDone, reqID, res, "")
 		_ = ws.Send(doneEnv)
+
+	case "http":
+		if p.HTTP == nil {
+			errEnv, _ := makeEnvelope(MsgProbeError, reqID, nil, "missing http request")
+			_ = ws.Send(errEnv)
+			return
+		}
+		res, err := a.localNode.HTTP(ctx, p.ClientIP, *p.HTTP)
+		if err != nil {
+			errEnv, _ := makeEnvelope(MsgProbeError, reqID, nil, err.Error())
+			_ = ws.Send(errEnv)
+			return
+		}
+		doneEnv, _ := makeEnvelope(MsgProbeDone, reqID, res, "")
+		_ = ws.Send(doneEnv)
 	}
 }
 

@@ -20,6 +20,18 @@ const I18N = {
         dig_empty: '输入域名（PTR 可直接填 IP）后点击「开始测试」发起解析…',
         dig_col_name: '记录名',
         dig_col_value: '记录值',
+        tab_http: '🔗 HTTP 探测',
+        http_title: 'HTTP/HTTPS 可达性探测',
+        http_desc: '从节点发起受控 GET：状态码、TTFB、重定向链、TLS 证书摘要与完整响应头。响应 body 仅计入 1MiB 计时上限，绝不展示。',
+        http_empty: '在上方输入完整 URL（如 https://example.com）后点击「开始测试」。若省略协议将默认 https://。',
+        http_status: '状态码',
+        http_total: '总耗时 (ms)',
+        http_bytes: '已读取 Body',
+        http_hop_url: '跳转 URL',
+        http_col_header: '响应头',
+        http_col_value: '值',
+        http_tls: 'TLS 证书',
+        http_truncated: '已截断（超 1MiB）',
         start_test: '开始测试',
         stop_test: '停止',
         compare_heading: '全球节点并发延迟与回程线路对比',
@@ -89,6 +101,18 @@ const I18N = {
         dig_empty: 'Enter a domain (or an IP for reverse PTR) and press "Run Probe".',
         dig_col_name: 'Name',
         dig_col_value: 'Value',
+        tab_http: '🔗 HTTP Probe',
+        http_title: 'HTTP/HTTPS Reachability Probe',
+        http_desc: 'Controlled GET from the node: status code, TTFB, redirect chain, TLS certificate summary, and full response headers. Body is capped at 1 MiB for timing and never displayed.',
+        http_empty: 'Enter a full URL (e.g. https://example.com) above and press "Run Probe". A missing scheme defaults to https://.',
+        http_status: 'Status',
+        http_total: 'Total (ms)',
+        http_bytes: 'Body Read',
+        http_hop_url: 'Hop URL',
+        http_col_header: 'Header',
+        http_col_value: 'Value',
+        http_tls: 'TLS Certificate',
+        http_truncated: 'Truncated (>1MiB)',
         start_test: 'Run Probe',
         stop_test: 'Stop',
         compare_heading: 'Multi-Region Latency & Return Route Comparison',
@@ -158,6 +182,18 @@ const I18N = {
         dig_empty: '輸入網域（PTR 可直接填 IP）後點擊「開始測試」發起解析…',
         dig_col_name: '記錄名',
         dig_col_value: '記錄值',
+        tab_http: '🔗 HTTP 探測',
+        http_title: 'HTTP/HTTPS 可達性探測',
+        http_desc: '從節點發起受控 GET：狀態碼、TTFB、重定向鏈、TLS 憑證摘要與完整回應標頭。回應 body 僅計入 1MiB 計時上限，絕不展示。',
+        http_empty: '在上方輸入完整 URL（如 https://example.com）後點擊「開始測試」。若省略協定將默認 https://。',
+        http_status: '狀態碼',
+        http_total: '總耗時 (ms)',
+        http_bytes: '已讀取 Body',
+        http_hop_url: '跳轉 URL',
+        http_col_header: '回應標頭',
+        http_col_value: '值',
+        http_tls: 'TLS 憑證',
+        http_truncated: '已截斷（超 1MiB）',
         start_test: '開始測試',
         stop_test: '停止',
         compare_heading: '全球節點並發延遲與回程線路對比',
@@ -227,6 +263,18 @@ const I18N = {
         dig_empty: 'ドメイン（PTR は IP 直接入力可）を入力して「測定開始」を押してください。',
         dig_col_name: '名前',
         dig_col_value: '値',
+        tab_http: '🔗 HTTP プローブ',
+        http_title: 'HTTP/HTTPS 到達性プローブ',
+        http_desc: 'ノードから制御付き GET：ステータスコード・TTFB・リダイレクトチェーン・TLS 証明書サマリー・全レスポンスヘッダー。ボディは 1MiB の計測上限のみで表示はされません。',
+        http_empty: '上に完全な URL（例: https://example.com）を入力して「測定開始」を押してください。スキーム省略時は https:// になります。',
+        http_status: 'ステータス',
+        http_total: '合計 (ms)',
+        http_bytes: '読み取り Body',
+        http_hop_url: 'ホップ URL',
+        http_col_header: 'ヘッダー',
+        http_col_value: '値',
+        http_tls: 'TLS 証明書',
+        http_truncated: '切り詰め（>1MiB）',
         start_test: '測定開始',
         stop_test: '停止',
         compare_heading: '全リージョン同時レイテンシ・復路ルート比較',
@@ -439,7 +487,7 @@ function applyInitialURLParams() {
         state.selectedNodeId = qNode;
     }
     const qTab = qs.get('tab');
-    if (qTab && ['compare', 'diag', 'dig', 'speed', 'bgp', 'share'].includes(qTab)) {
+    if (qTab && ['compare', 'diag', 'dig', 'http', 'speed', 'bgp', 'share'].includes(qTab)) {
         switchTab(qTab);
     }
     const qIPVer = qs.get('ip_version');
@@ -470,7 +518,7 @@ function applyInitialURLParams() {
     if (qs.get('autorun') === '1') {
         setTimeout(() => {
             const target = document.getElementById('target-input').value.trim();
-            if (target && (state.activeTab === 'compare' || state.activeTab === 'diag' || state.activeTab === 'dig' || state.activeTab === 'bgp')) {
+            if (target && (state.activeTab === 'compare' || state.activeTab === 'diag' || state.activeTab === 'dig' || state.activeTab === 'http' || state.activeTab === 'bgp')) {
                 document.getElementById('probe-form').requestSubmit();
             }
         }, 80);
@@ -484,7 +532,7 @@ function buildDeepLinkURL(includeEmbed = false) {
         u.searchParams.set('node', state.selectedNodeId);
     }
     const target = document.getElementById('target-input').value.trim();
-    if (target && (state.activeTab === 'compare' || state.activeTab === 'diag' || state.activeTab === 'dig' || state.activeTab === 'bgp')) {
+    if (target && (state.activeTab === 'compare' || state.activeTab === 'diag' || state.activeTab === 'dig' || state.activeTab === 'http' || state.activeTab === 'bgp')) {
         const visitorIP = state.meta && state.meta.visitor && state.meta.visitor.ip;
         u.searchParams.set('target', target === visitorIP ? 'me' : target);
         u.searchParams.set('autorun', '1');
@@ -557,6 +605,7 @@ function syncSelectedNodeUI() {
     document.getElementById('speed-node-label').textContent = label;
     document.getElementById('bgp-node-label').textContent = label;
     document.getElementById('dig-node-label').textContent = label;
+    document.getElementById('http-node-label').textContent = label;
 
     // BGP capability
     const bgpOK = Boolean(node && node.online && node.capabilities && node.capabilities.bgp);
@@ -609,10 +658,10 @@ function switchTab(tabName) {
     document.querySelectorAll('.tab').forEach((b) => {
         b.classList.toggle('active', b.getAttribute('data-tab') === tabName);
     });
-    ['compare', 'diag', 'dig', 'speed', 'bgp', 'share'].forEach((id) => {
+    ['compare', 'diag', 'dig', 'http', 'speed', 'bgp', 'share'].forEach((id) => {
         document.getElementById(`panel-${id}`).hidden = id !== tabName;
     });
-    const showTargetBar = tabName === 'compare' || tabName === 'diag' || tabName === 'dig' || tabName === 'bgp';
+    const showTargetBar = tabName === 'compare' || tabName === 'diag' || tabName === 'dig' || tabName === 'http' || tabName === 'bgp';
     document.getElementById('target-bar').hidden = !showTargetBar;
     document.getElementById('diag-tool-group').hidden = tabName !== 'diag';
     document.getElementById('dig-rrtype-group').hidden = tabName !== 'dig';
@@ -1252,6 +1301,95 @@ function renderDigResult(res) {
     `).join('');
 }
 
+async function startHTTPProbe(target) {
+    const node = selectedNode();
+    if (!node) return;
+    if (!/^https?:\/\//i.test(target)) {
+        target = `https://${target}`;
+    }
+    showProbeError('');
+    setProbeRunning(true);
+    state.lastTarget = target;
+
+    try {
+        const qs = new URLSearchParams({ node: node.id, url: target });
+        const res = await fetch(`/api/v1/probe/http?${qs.toString()}`);
+        const data = await res.json();
+        if (!res.ok) {
+            showProbeError(data.error || 'http probe failed');
+            return;
+        }
+        renderHTTPResult(data);
+    } catch (e) {
+        showProbeError(e.message);
+    } finally {
+        setProbeRunning(false);
+    }
+}
+
+function renderHTTPResult(res) {
+    state.lastHTTP = res;
+
+    document.getElementById('http-stats-wrap').hidden = false;
+    document.getElementById('http-empty-hint').hidden = true;
+    document.getElementById('http-status').textContent = `${res.status_code} ${res.status || ''}`.trim();
+    document.getElementById('http-ttfb').textContent = fmtMs(res.ttfb_ms);
+    document.getElementById('http-total').textContent = fmtMs(res.total_ms);
+    const bytes = `${(res.bytes_read / 1024).toFixed(1)} KiB${res.truncated ? ` · ${t('http_truncated')}` : ''}`;
+    document.getElementById('http-bytes').textContent = bytes;
+
+    const pill = document.getElementById('http-meta-pill');
+    pill.hidden = false;
+    pill.textContent = `${res.proto || 'HTTP'} · ${res.remote_addr || ''}`;
+
+    const tlsBox = document.getElementById('http-tls-box');
+    if (res.tls) {
+        tlsBox.hidden = false;
+        document.getElementById('http-tls-issuer').textContent = res.tls.issuer || '—';
+        document.getElementById('http-tls-validity').textContent = `${res.tls.not_before} → ${res.tls.not_after}`;
+        document.getElementById('http-tls-sans').textContent = (res.tls.sans || []).slice(0, 6).join(', ');
+    } else {
+        tlsBox.hidden = true;
+    }
+
+    const redirWrap = document.getElementById('http-redirects-wrap');
+    const redirBody = document.getElementById('http-redirects-tbody');
+    if (res.redirects && res.redirects.length > 0) {
+        redirWrap.hidden = false;
+        redirBody.innerHTML = res.redirects.map((h, i) => `
+            <tr>
+                <td>${i + 1}</td>
+                <td class="mono">${escapeHTML(h.url)}</td>
+                <td><span class="tag-chip">${escapeHTML(String(h.status))}</span></td>
+                <td class="mono">${escapeHTML(h.location)}</td>
+                <td class="mono">${escapeHTML(String(h.elapsed_ms))}</td>
+            </tr>
+        `).join('');
+    } else {
+        redirWrap.hidden = true;
+    }
+
+    const hdrWrap = document.getElementById('http-headers-wrap');
+    const hdrBody = document.getElementById('http-headers-tbody');
+    const headers = res.headers || {};
+    const hdrRows = Object.keys(headers).sort().map((k) => `
+        <tr>
+            <td class="mono">${escapeHTML(k)}</td>
+            <td class="mono">${escapeHTML((headers[k] || []).join('; '))}</td>
+        </tr>
+    `).join('');
+    if (hdrRows) {
+        hdrWrap.hidden = false;
+        hdrBody.innerHTML = hdrRows;
+    } else {
+        hdrWrap.hidden = true;
+    }
+}
+
+function fmtMs(v) {
+    return typeof v === 'number' ? v.toFixed(2) : String(v);
+}
+
 async function runBGPRouteLookup(target) {
     const node = selectedNode();
     if (!node) return;
@@ -1650,6 +1788,8 @@ function bindEvents() {
             runBGPRouteLookup(target);
         } else if (state.activeTab === 'dig') {
             startDig(target);
+        } else if (state.activeTab === 'http') {
+            startHTTPProbe(target);
         } else {
             startSingleDiag(target, ipVer);
         }

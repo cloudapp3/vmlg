@@ -65,6 +65,7 @@
             <button type="button" class="tab active" data-tab="compare" data-i18n="tab_compare">⚡ Multi-Node Compare</button>
             <button type="button" class="tab" data-tab="diag" data-i18n="tab_diag">🧭 Live MTR &amp; Ping</button>
             <button type="button" class="tab" data-tab="dig" data-i18n="tab_dig">🔎 DNS Dig</button>
+            <button type="button" class="tab" data-tab="http" data-i18n="tab_http">🔗 HTTP Probe</button>
             <button type="button" class="tab" data-tab="speed" data-i18n="tab_speed">🚀 Speedtest &amp; iPerf3</button>
             <button type="button" class="tab" data-tab="bgp" id="tab-btn-bgp" data-i18n="tab_bgp">🌐 BGP &amp; AS-Path</button>
             <button type="button" class="tab" data-tab="share" data-i18n="tab_share">📋 Share Markdown</button>
@@ -272,7 +273,78 @@
             </div>
         </section>
 
-        <!-- TAB 4: Speedtest, Zero-Disk Files & iPerf3 -->
+        <!-- TAB 4: HTTP/HTTPS Reachability Probe -->
+        <section class="tab-panel" id="panel-http" hidden>
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <h2 class="card-title">
+                            <span data-i18n="http_title">HTTP/HTTPS Probe</span>
+                            · <span class="accent-text" id="http-node-label">—</span>
+                        </h2>
+                        <p class="card-desc" data-i18n="http_desc">Controlled GET from the node: status code, TTFB, redirect chain, TLS certificate summary, and full response headers. The response body is never downloaded beyond a 1 MiB timing cap and never displayed.</p>
+                    </div>
+                    <span class="engine-pill" id="http-meta-pill" hidden></span>
+                </div>
+
+                <div class="stats-grid" id="http-stats-wrap" hidden>
+                    <div class="stat-box">
+                        <span class="stat-label" data-i18n="http_status">Status</span>
+                        <span class="stat-val" id="http-status">—</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-label">TTFB (ms)</span>
+                        <span class="stat-val" id="http-ttfb">—</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-label" data-i18n="http_total">Total (ms)</span>
+                        <span class="stat-val" id="http-total">—</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-label" data-i18n="http_bytes">Body Read</span>
+                        <span class="stat-val" id="http-bytes">—</span>
+                    </div>
+                </div>
+
+                <p class="muted-text status-line" id="http-empty-hint" data-i18n="http_empty">Enter a full URL (e.g. https://example.com) above and press "Run Probe".</p>
+
+                <div class="mtr-route-banner" id="http-tls-box" hidden>
+                    <span>🔒 <span data-i18n="http_tls">TLS Certificate</span></span>
+                    <span class="line-badge subtle" id="http-tls-issuer"></span>
+                    <span class="muted-text" id="http-tls-validity"></span>
+                    <span class="muted-text" id="http-tls-sans"></span>
+                </div>
+
+                <div class="table-wrap" id="http-redirects-wrap" hidden style="margin-top:12px">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th data-i18n="http_hop_url">Hop URL</th>
+                                <th>Status</th>
+                                <th>Location</th>
+                                <th>ms</th>
+                            </tr>
+                        </thead>
+                        <tbody id="http-redirects-tbody"></tbody>
+                    </table>
+                </div>
+
+                <div class="table-wrap" id="http-headers-wrap" hidden style="margin-top:12px">
+                    <table class="data-table mono-nums">
+                        <thead>
+                            <tr>
+                                <th data-i18n="http_col_header">Header</th>
+                                <th data-i18n="http_col_value">Value</th>
+                            </tr>
+                        </thead>
+                        <tbody id="http-headers-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 5: Speedtest, Zero-Disk Files & iPerf3 -->
         <section class="tab-panel" id="panel-speed" hidden>
             <div class="speed-layout">
                 <!-- HTML5 Interactive Speedtest -->

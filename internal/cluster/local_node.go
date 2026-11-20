@@ -98,6 +98,7 @@ func (n *LocalNode) Descriptor() NodeDescriptor {
 			Ping:      true,
 			MTR:       true,
 			Dig:       true,
+			HTTP:      true,
 			Speedtest: speedEnabled,
 			TestFiles: testFiles,
 			IPerf3:    iperfOK,
@@ -144,6 +145,24 @@ func (n *LocalNode) Dig(ctx context.Context, clientIP string, req probe.DigReque
 		defer release()
 	}
 	return probe.RunDig(ctx, req)
+}
+
+// HTTP always applies per-hop address policy when a guard is present; the
+// per-target rate limit is only re-acquired on real agents (enforceGuard).
+func (n *LocalNode) HTTP(ctx context.Context, clientIP string, req probe.HTTPRequest) (probe.HTTPResult, error) {
+	var policy probe.AddrPolicyFunc
+	if n.guard != nil {
+		policy = n.guard.CheckAddrAllowed
+		if n.enforceGuard {
+			cip, _ := netip.ParseAddr(clientIP)
+			release, err := n.guard.AcquireProbe(cip, probe.HTTPRateTargetAddr(ctx, req.URL))
+			if err != nil {
+				return probe.HTTPResult{}, err
+			}
+			defer release()
+		}
+	}
+	return probe.RunHTTP(ctx, req, policy)
 }
 
 func (n *LocalNode) AcquireIPerf(_ context.Context, clientKey string) (speedtest.IPerfLease, error) {

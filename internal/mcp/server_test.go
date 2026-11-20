@@ -31,6 +31,8 @@ func TestMCPStdioServerInitializeAndToolsCall(t *testing.T) {
 		`{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"vmlg_bgp_route","arguments":{"target":"1.1.1.1"}}}`,
 		`{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"vmlg_dig","arguments":{}}}`,
 		`{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"vmlg_dig","arguments":{"target":"example.com","resolver":"192.168.1.1"}}}`,
+		`{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"vmlg_http","arguments":{}}}`,
+		`{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"vmlg_http","arguments":{"url":"file:///etc/passwd"}}}`,
 	}, "\n") + "\n"
 
 	if err := srv.Serve(context.Background(), strings.NewReader(input)); err != nil {
@@ -42,9 +44,11 @@ func TestMCPStdioServerInitializeAndToolsCall(t *testing.T) {
 		`"protocolVersion":"2025-06-18"`,
 		`"vmlg_compare"`,
 		`"vmlg_dig"`,
+		`"vmlg_http"`,
 		`"mcp-test-node"`,
 		`"AS4809"`,
 		`target is required`,
+		`url is required`,
 		`HTTP 400`,
 	} {
 		if !strings.Contains(out, want) {

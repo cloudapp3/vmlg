@@ -156,6 +156,7 @@ func (s *Server) buildMux() (*http.ServeMux, error) {
 	mux.HandleFunc("GET /api/v1/probe/ping", s.handlePingSSE)
 	mux.HandleFunc("GET /api/v1/probe/mtr", s.handleMTRSSE)
 	mux.HandleFunc("GET /api/v1/probe/dig", s.handleDig)
+	mux.HandleFunc("GET /api/v1/probe/http", s.handleHTTPProbe)
 	mux.HandleFunc("GET /api/v1/probe/compare", s.handleCompareSSE)
 	mux.HandleFunc("GET /api/v1/bgp/route", s.handleBGPRoute)
 	mux.HandleFunc("GET /api/v1/bgp/summary", s.handleBGPSummary)
@@ -448,6 +449,62 @@ func resolverHostPort(normalized string) string {
 		return host
 	}
 	return normalized
+}
+
+func (s *Server) handleHTTPProbe(w http.ResponseWriter, r *http.Request) {
+	s.metrics.IncRequest("http_probe")
+	q := r.URL.Query()
+
+	u, err := probe.ParseHTTPURL(q.Get("url"))
+	if err != nil {
+		s.metrics.IncGuardReject("invalid_target")
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return
+	}
+	// Pre-flight SSRF check on every resolved record of the initial host;
+	// per-hop re-checks continue inside LocalNode.HTTP via the same guard.
+	resolved, err := s.guard.ResolveAndValidateTarget(r.Context(), u.Hostname(), "")
+	if err != nil {
+		s.recordGuardError(err)
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return
+	}
+
+	runner, err := s.registry.GetRunner(strings.TrimSpace(q.Get("node")))
+	if err != nil {
+		status := http.StatusNotFound
+		if errors.Is(err, cluster.ErrNodeOffline) {
+			status = http.StatusServiceUnavailable
+		}
+		writeJSON(w, status, map[string]string{"error": err.Error()})
+		return
+	}
+
+	clientIP := s.guard.ClientIP(r)
+	release, gerr := s.guard.AcquireProbe(clientIP, resolved.Addr)
+	if gerr != nil {
+		s.recordGuardError(gerr)
+		status := http.StatusTooManyRequests
+		if errors.Is(gerr, guard.ErrBusy) {
+			status = http.StatusServiceUnavailable
+		}
+		writeJSON(w, status, map[string]string{"error": gerr.Error()})
+		return
+	}
+	defer release()
+
+	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+	defer cancel()
+
+	res, err := runner.HTTP(ctx, clientIP.String(), probe.HTTPRequest{
+		URL:       u.String(),
+		TimeoutMs: s.cfg.Probe.HTTPTimeoutMs,
+	})
+	if err != nil {
+		writeJSON(w, http.StatusBadGateway, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, res)
 }
 
 func (s *Server) handleCompareSSE(w http.ResponseWriter, r *http.Request) {

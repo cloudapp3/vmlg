@@ -310,6 +310,24 @@ func (s *Server) callTool(ctx context.Context, name string, rawArgs json.RawMess
 		b, _ := json.MarshalIndent(res, "", "  ")
 		return toolResult{Text: string(b), Structured: res}, false
 
+	case "vmlg_http":
+		target := strArg("url")
+		if target == "" {
+			return toolResult{Text: "url is required"}, true
+		}
+		q := url.Values{}
+		q.Set("url", target)
+		if v := strArg("node"); v != "" {
+			q.Set("node", v)
+		}
+
+		var res map[string]any
+		if err := s.getJSON(ctx, "/api/v1/probe/http?"+q.Encode(), &res); err != nil {
+			return toolResult{Text: err.Error()}, true
+		}
+		b, _ := json.MarshalIndent(res, "", "  ")
+		return toolResult{Text: string(b), Structured: res}, false
+
 	case "vmlg_compare":
 		target := strArg("target")
 		if target == "" {
@@ -535,6 +553,18 @@ func toolDefinitions() []map[string]any {
 					"node":     map[string]any{"type": "string", "description": "Optional node ID"},
 				},
 				"required": []string{"target"},
+			},
+		},
+		{
+			"name":        "vmlg_http",
+			"description": "Probe an HTTP/HTTPS URL from a Looking Glass node: status code, TTFB, redirect chain, TLS certificate summary, and response headers. Response body is never returned.",
+			"inputSchema": map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"url":  map[string]any{"type": "string", "description": "Absolute http:// or https:// URL to probe"},
+					"node": map[string]any{"type": "string", "description": "Optional node ID"},
+				},
+				"required": []string{"url"},
 			},
 		},
 		{

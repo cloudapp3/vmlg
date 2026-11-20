@@ -7,6 +7,7 @@ All notable changes to **vmlg** will be documented in this file.
 ### Added
 
 - **DNS Dig Probe**: `GET /api/v1/probe/dig` with full dig semantics — A/AAAA/CNAME/MX/NS/TXT/PTR record queries showing per-record TTLs, CNAME chains and the complete answer section, via the node system resolver or a user-supplied resolver (SSRF-guarded, dual token-bucket rate limited, UDP with automatic TCP retry on truncation). New `vmlg_dig` MCP tool, Web UI dig tab with deep-link support (`?tab=dig&target=&rrtype=&resolver=`), and hub→agent tunnel forwarding.
+- **HTTP/HTTPS Probe**: `GET /api/v1/probe/http` controlled GET reachability probe — status code, TTFB, full redirect chain (per-hop URL/status/latency), TLS certificate summary (issuer/validity/SANs), and complete response headers. Response body is capped at 1 MiB for timing only and never returned or rendered; per-hop SSRF re-checks on every redirect; new `vmlg_http` MCP tool, Web UI http tab (`?tab=http&url=`), tunnel forwarding, and `[probe] http_timeout_ms`.
 
 ## [v0.1.0] - 2026-11-18
 

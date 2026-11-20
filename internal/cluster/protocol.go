@@ -30,6 +30,7 @@ type NodeCapabilities struct {
 	Ping      bool     `json:"ping"`
 	MTR       bool     `json:"mtr"`
 	Dig       bool     `json:"dig"`
+	HTTP      bool     `json:"http"`
 	Speedtest bool     `json:"speedtest"`
 	TestFiles []string `json:"test_files,omitempty"`
 	IPerf3    bool     `json:"iperf3"`
@@ -69,11 +70,12 @@ type HeartbeatPayload struct {
 }
 
 type ProbeStartPayload struct {
-	Kind     string             `json:"kind"` // "ping" | "mtr" | "dig"
+	Kind     string             `json:"kind"` // "ping" | "mtr" | "dig" | "http"
 	ClientIP string             `json:"client_ip,omitempty"`
 	Ping     *probe.PingRequest `json:"ping,omitempty"`
 	MTR      *probe.MTRRequest  `json:"mtr,omitempty"`
 	Dig      *probe.DigRequest  `json:"dig,omitempty"`
+	HTTP     *probe.HTTPRequest `json:"http,omitempty"`
 }
 
 type IPerfRequestPayload struct {
@@ -113,6 +115,7 @@ type NodeRunner interface {
 	Ping(ctx context.Context, clientIP string, req probe.PingRequest, onSample func(probe.PingSample)) (probe.PingSummary, error)
 	MTR(ctx context.Context, clientIP string, req probe.MTRRequest, onUpdate func(probe.MTRSnapshot)) (probe.MTRSnapshot, error)
 	Dig(ctx context.Context, clientIP string, req probe.DigRequest) (probe.DigResult, error)
+	HTTP(ctx context.Context, clientIP string, req probe.HTTPRequest) (probe.HTTPResult, error)
 	AcquireIPerf(ctx context.Context, clientKey string) (speedtest.IPerfLease, error)
 	BGPRoute(ctx context.Context, target string) (bgp.RouteLookupResult, error)
 	BGPSummary(ctx context.Context) (bgp.SummaryResult, error)

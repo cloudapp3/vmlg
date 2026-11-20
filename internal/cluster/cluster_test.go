@@ -157,4 +157,23 @@ func TestHubAgentTunnelEndToEnd(t *testing.T) {
 		digRes.Answers[0].Value != "203.0.113.7" || digRes.Answers[0].TTL != 42 {
 		t.Fatalf("unexpected tunneled Dig result: %+v", digRes)
 	}
+
+	// HTTP probe over the tunnel against a local backend.
+	httpBackend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/jump" {
+			w.Header().Set("Location", "/land")
+			w.WriteHeader(http.StatusFound)
+			return
+		}
+		w.Header().Set("X-Tunnel", "ok")
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer httpBackend.Close()
+	httpRes, err := runner.HTTP(ctx, "8.8.8.8", probe.HTTPRequest{URL: httpBackend.URL + "/jump", TimeoutMs: 5000})
+	if err != nil {
+		t.Fatalf("remote tunneled HTTP failed: %v", err)
+	}
+	if httpRes.StatusCode != 200 || len(httpRes.Redirects) != 1 || httpRes.Headers.Get("X-Tunnel") != "ok" {
+		t.Fatalf("unexpected tunneled HTTP result: %+v", httpRes)
+	}
 }

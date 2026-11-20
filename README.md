@@ -203,6 +203,7 @@ sudo sysctl -w net.ipv4.ping_group_range="0 2147483647"
 | `GET /api/v1/probe/mtr` | SSE streaming multi-cycle live MTR trace |
 | `GET /api/v1/probe/ping` | SSE streaming single-node ICMP / TCP Ping |
 | `GET /api/v1/probe/dig` | DNS query from a node: full answer records with TTLs & CNAME chains, node system or custom resolver (`?target=&rrtype=&resolver=`) |
+| `GET /api/v1/probe/http` | HTTP/HTTPS reachability probe from a node: status, TTFB, redirect chain, TLS cert summary, response headers — body never returned (`?url=`) |
 | `GET /api/v1/bgp/route` | BGP RIB route lookup (paths, AS-Path, LocalPref, Communities) |
 | `GET /api/v1/bgp/summary` | BGP neighbor session summary |
 | `POST /api/v1/iperf3/lease` | Allocate an ephemeral one-shot iPerf3 server port lease |

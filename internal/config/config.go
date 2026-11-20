@@ -104,6 +104,7 @@ type ProbeConfig struct {
 	MTRMaxCycles     int  `toml:"mtr_max_cycles"`
 	MTRMaxHops       int  `toml:"mtr_max_hops"`
 	DigTimeoutMs     int  `toml:"dig_timeout_ms"`
+	HTTPTimeoutMs    int  `toml:"http_timeout_ms"`
 	EnableDNSASN     bool `toml:"enable_dns_asn"`
 	EnablePTR        bool `toml:"enable_ptr"`
 }
@@ -192,6 +193,7 @@ func Default(mode string) Config {
 			MTRMaxCycles:     10,
 			MTRMaxHops:       30,
 			DigTimeoutMs:     5000,
+			HTTPTimeoutMs:    10000,
 			EnableDNSASN:     true,
 			EnablePTR:        true,
 		},
@@ -529,6 +531,9 @@ func (c *Config) NormalizeAndValidate() error {
 	}
 	if c.Probe.DigTimeoutMs <= 0 || c.Probe.DigTimeoutMs > 15000 {
 		c.Probe.DigTimeoutMs = 5000
+	}
+	if c.Probe.HTTPTimeoutMs <= 0 || c.Probe.HTTPTimeoutMs > 30000 {
+		c.Probe.HTTPTimeoutMs = 10000
 	}
 
 	if c.IPerf3.Enabled {
