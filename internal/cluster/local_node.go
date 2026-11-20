@@ -75,6 +75,7 @@ func (n *LocalNode) Descriptor() NodeDescriptor {
 	}
 
 	nowStr := time.Now().UTC().Format(time.RFC3339)
+	sn := CollectNodeStatus(n.startedAt)
 	return NodeDescriptor{
 		ID:               n.cfg.Node.ID,
 		Name:             n.cfg.Node.Name,
@@ -94,6 +95,11 @@ func (n *LocalNode) Descriptor() NodeDescriptor {
 		LastSeen:         nowStr,
 		ActiveProbes:     activeProbes,
 		ActiveSpeedtests: activeSpeed,
+		LoadAvg1:         sn.LoadAvg1,
+		LoadAvg5:         sn.LoadAvg5,
+		LoadAvg15:        sn.LoadAvg15,
+		MemUsedPercent:   sn.MemUsedPercent,
+		UptimeSeconds:    sn.UptimeSeconds,
 		Capabilities: NodeCapabilities{
 			Ping:      true,
 			MTR:       true,

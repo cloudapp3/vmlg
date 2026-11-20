@@ -23,16 +23,17 @@ const (
 )
 
 type Config struct {
-	Mode      string          `toml:"mode"`
-	Server    ServerConfig    `toml:"server"`
-	Node      NodeConfig      `toml:"node"`
-	Hub       HubConfig       `toml:"hub"`
-	Agent     AgentConfig     `toml:"agent"`
-	Guard     GuardConfig     `toml:"guard"`
-	Probe     ProbeConfig     `toml:"probe"`
-	Speedtest SpeedtestConfig `toml:"speedtest"`
-	IPerf3    IPerf3Config    `toml:"iperf3"`
-	BGP       BGPConfig       `toml:"bgp"`
+	Mode       string           `toml:"mode"`
+	Server     ServerConfig     `toml:"server"`
+	Node       NodeConfig       `toml:"node"`
+	Hub        HubConfig        `toml:"hub"`
+	Agent      AgentConfig      `toml:"agent"`
+	Guard      GuardConfig      `toml:"guard"`
+	Probe      ProbeConfig      `toml:"probe"`
+	Speedtest  SpeedtestConfig  `toml:"speedtest"`
+	IPerf3     IPerf3Config     `toml:"iperf3"`
+	BGP        BGPConfig        `toml:"bgp"`
+	NodeStatus NodeStatusConfig `toml:"node_status"`
 }
 
 type ServerConfig struct {
@@ -93,6 +94,14 @@ type GuardConfig struct {
 	TargetBurst            int      `toml:"target_burst"`
 	MaxConcurrentProbes    int      `toml:"max_concurrent_probes"`
 	MaxConcurrentSpeedtest int      `toml:"max_concurrent_speedtest"`
+}
+
+// NodeStatusConfig controls the public node health panel: coarse load/memory
+// metrics on node cards and /api/v1/nodes. public=false keeps only the
+// online/offline flag and version.
+type NodeStatusConfig struct {
+	Public     bool `toml:"public"`
+	SampleSecs int  `toml:"sample_seconds"`
 }
 
 type ProbeConfig struct {
@@ -219,6 +228,10 @@ func Default(mode string) Config {
 			VtyshBinary: "vtysh",
 			GoBGPBinary: "gobgp",
 			Communities: map[string]string{},
+		},
+		NodeStatus: NodeStatusConfig{
+			Public:     true,
+			SampleSecs: 15,
 		},
 	}
 }
@@ -534,6 +547,9 @@ func (c *Config) NormalizeAndValidate() error {
 	}
 	if c.Probe.HTTPTimeoutMs <= 0 || c.Probe.HTTPTimeoutMs > 30000 {
 		c.Probe.HTTPTimeoutMs = 10000
+	}
+	if c.NodeStatus.SampleSecs <= 0 || c.NodeStatus.SampleSecs > 60 {
+		c.NodeStatus.SampleSecs = 15
 	}
 
 	if c.IPerf3.Enabled {

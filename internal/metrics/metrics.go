@@ -19,6 +19,13 @@ type SnapshotGauge struct {
 	ActiveProbes      int
 	ActiveSpeedtests  int
 	ActiveIPerfLeases int
+	NodeUps           []NodeUp
+}
+
+// NodeUp is one per-node liveness gauge sample (1 = online, 0 = offline).
+type NodeUp struct {
+	NodeID string
+	Up     int
 }
 
 type Collector struct {
@@ -116,6 +123,17 @@ func (c *Collector) WritePrometheus(w io.Writer) {
 	_, _ = fmt.Fprintf(w, "# TYPE vmlg_nodes_total gauge\n")
 	_, _ = fmt.Fprintf(w, "vmlg_nodes_total{status=\"online\"} %d\n", g.OnlineNodes)
 	_, _ = fmt.Fprintf(w, "vmlg_nodes_total{status=\"offline\"} %d\n", g.OfflineNodes)
+
+	if len(g.NodeUps) > 0 {
+		_, _ = fmt.Fprintf(w, "# HELP vmlg_node_up Node liveness by node_id (1 = online, 0 = offline).\n")
+		_, _ = fmt.Fprintf(w, "# TYPE vmlg_node_up gauge\n")
+		ups := make([]NodeUp, len(g.NodeUps))
+		copy(ups, g.NodeUps)
+		sort.Slice(ups, func(i, j int) bool { return ups[i].NodeID < ups[j].NodeID })
+		for _, n := range ups {
+			_, _ = fmt.Fprintf(w, "vmlg_node_up{node_id=%q} %d\n", n.NodeID, n.Up)
+		}
+	}
 
 	_, _ = fmt.Fprintf(w, "# HELP vmlg_active_probes Currently executing diagnostic probes.\n")
 	_, _ = fmt.Fprintf(w, "# TYPE vmlg_active_probes gauge\n")

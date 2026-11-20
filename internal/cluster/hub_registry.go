@@ -399,9 +399,15 @@ type Registry struct {
 	mu        sync.RWMutex
 	sessions  map[string]*remoteSession
 	lastKnown map[string]NodeDescriptor
+	samples   map[string][]LoadSample
 
 	reqSeq atomic.Uint64
 }
+
+// maxLoadSamples bounds the per-node in-memory load sparkline. With the default
+// 15s heartbeat/sampling interval this retains one hour; restart clears it all
+// (zero-disk policy, see ADR-VMLG-004).
+const maxLoadSamples = 240
 
 func NewRegistry(agentToken, signingSecret string, ticketTTL time.Duration, localNode NodeRunner, logger *slog.Logger) *Registry {
 	if logger == nil {
@@ -418,7 +424,58 @@ func NewRegistry(agentToken, signingSecret string, ticketTTL time.Duration, loca
 		localNode:     localNode,
 		sessions:      make(map[string]*remoteSession),
 		lastKnown:     make(map[string]NodeDescriptor),
+		samples:       make(map[string][]LoadSample),
 	}
+}
+
+// StartSampling periodically records local-node load points for the sparkline.
+// Remote agents feed their points via heartbeat. Cancel ctx to stop.
+func (r *Registry) StartSampling(ctx context.Context, interval time.Duration) {
+	if interval <= 0 {
+		interval = 15 * time.Second
+	}
+	go func() {
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				if r.localNode == nil {
+					continue
+				}
+				d := r.localNode.Descriptor()
+				r.appendSample(d.ID, d.LoadAvg1)
+			}
+		}
+	}()
+}
+
+func (r *Registry) appendSample(nodeID string, load1 float64) {
+	now := time.Now().UTC().Unix()
+	r.mu.Lock()
+	buf := r.samples[nodeID]
+	// Skip duplicate timestamps (heartbeat + sampler racing on the same tick).
+	if len(buf) > 0 && buf[len(buf)-1].TS == now {
+		r.mu.Unlock()
+		return
+	}
+	buf = append(buf, LoadSample{TS: now, Load1: load1})
+	if len(buf) > maxLoadSamples {
+		buf = buf[len(buf)-maxLoadSamples:]
+	}
+	r.samples[nodeID] = buf
+	r.mu.Unlock()
+}
+
+// NodeLoadSamples returns the in-memory load sparkline for a node (oldest first).
+func (r *Registry) NodeLoadSamples(nodeID string) []LoadSample {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	out := make([]LoadSample, len(r.samples[nodeID]))
+	copy(out, r.samples[nodeID])
+	return out
 }
 
 func (r *Registry) nextReqID() string {
@@ -626,12 +683,25 @@ func (r *Registry) ServeAgentWS(w http.ResponseWriter, req *http.Request) {
 			sess.desc.LastSeen = time.Now().UTC().Format(time.RFC3339)
 			sess.desc.ActiveProbes = hb.ActiveProbes
 			sess.desc.ActiveSpeedtests = hb.ActiveSpeedtests
+			if hb.Status != nil {
+				sess.desc.LoadAvg1 = hb.Status.LoadAvg1
+				sess.desc.LoadAvg5 = hb.Status.LoadAvg5
+				sess.desc.LoadAvg15 = hb.Status.LoadAvg15
+				sess.desc.MemUsedPercent = hb.Status.MemUsedPercent
+				sess.desc.UptimeSeconds = hb.Status.UptimeSeconds
+				if hb.Status.Version != "" {
+					sess.desc.Version = hb.Status.Version
+				}
+			}
 			updated := sess.desc
 			sess.mu.Unlock()
 
 			r.mu.Lock()
 			r.lastKnown[desc.ID] = updated
 			r.mu.Unlock()
+			if hb.Status != nil {
+				r.appendSample(desc.ID, hb.Status.LoadAvg1)
+			}
 
 		case MsgProbeSample, MsgProbeMTR, MsgProbeDone, MsgProbeError, MsgIPerfResult, MsgBGPResult:
 			sess.dispatch(env)

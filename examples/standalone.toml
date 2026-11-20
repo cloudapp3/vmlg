@@ -48,6 +48,13 @@ http_timeout_ms = 10000
 enable_dns_asn = true
 enable_ptr = true
 
+[node_status]
+# Publish coarse load/memory metrics on node cards and /api/v1/nodes.
+# false = only online/offline flag and version are exposed publicly.
+public = true
+# Load sparkline sampling interval in seconds (5-60, default 15, keeps 1h in memory).
+sample_seconds = 15
+
 [speedtest]
 enabled = true
 max_rate_mbps = 0 # 0 = unlimited; set e.g. 500 to cap per-stream rate at 500 Mbps

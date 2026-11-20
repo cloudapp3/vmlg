@@ -927,3 +927,29 @@ body.embed-mode .footer {
     padding-top: 8px;
     padding-bottom: 10px;
 }
+
+/* Node health snapshot + 1h load sparkline */
+.node-health {
+    font-size: 11.5px;
+    opacity: 0.85;
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.node-spark {
+    margin-top: 6px;
+    color: var(--accent, #0ea5e9);
+    opacity: 0.9;
+}
+
+.node-spark svg {
+    display: block;
+    width: 100%;
+    height: 26px;
+}
+
+.node-card.offline .node-spark {
+    display: none;
+}

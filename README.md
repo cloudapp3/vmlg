@@ -198,7 +198,7 @@ sudo sysctl -w net.ipv4.ping_group_range="0 2147483647"
 | `GET /healthz` | Liveness and readiness check |
 | `GET /metrics` | Prometheus metrics exposition (optional `metrics_token` Bearer auth) |
 | `GET /api/v1/meta` | Portal metadata, visitor IP/ASN detection, and registered node list |
-| `GET /api/v1/nodes` | Live node status, active load, and short-lived HMAC speedtest tickets |
+| `GET /api/v1/nodes` | Live node status, health snapshot (load 1/5/15, mem %, uptime, 1h load sparkline), and short-lived HMAC speedtest tickets; hide metrics with `node_status.public = false` |
 | `GET /api/v1/probe/compare` | SSE streaming multi-node concurrent latency & return-route comparison |
 | `GET /api/v1/probe/mtr` | SSE streaming multi-cycle live MTR trace |
 | `GET /api/v1/probe/ping` | SSE streaming single-node ICMP / TCP Ping |

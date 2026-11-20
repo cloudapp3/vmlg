@@ -197,6 +197,14 @@ func (a *AgentClient) connectAndServeOnce(ctx context.Context, wsURL string) err
 				env, _ := makeEnvelope(MsgHeartbeat, "", HeartbeatPayload{
 					ActiveProbes:     desc.ActiveProbes,
 					ActiveSpeedtests: desc.ActiveSpeedtests,
+					Status: &NodeStatusSnapshot{
+						LoadAvg1:       desc.LoadAvg1,
+						LoadAvg5:       desc.LoadAvg5,
+						LoadAvg15:      desc.LoadAvg15,
+						MemUsedPercent: desc.MemUsedPercent,
+						UptimeSeconds:  desc.UptimeSeconds,
+						Version:        desc.Version,
+					},
 				}, "")
 				if err := ws.Send(env); err != nil {
 					cancelConn()

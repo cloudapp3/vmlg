@@ -27,15 +27,16 @@ import (
 )
 
 type Server struct {
-	cfg       config.Config
-	guard     *guard.Guard
-	enricher  *enrich.Enricher
-	registry  *cluster.Registry
-	iperf     *speedtest.IPerfManager
-	speedtest *speedtest.Handler
-	metrics   *metrics.Collector
-	logger    *slog.Logger
-	handler   http.Handler
+	cfg          config.Config
+	guard        *guard.Guard
+	enricher     *enrich.Enricher
+	registry     *cluster.Registry
+	iperf        *speedtest.IPerfManager
+	speedtest    *speedtest.Handler
+	metrics      *metrics.Collector
+	logger       *slog.Logger
+	handler      http.Handler
+	sampleCancel context.CancelFunc
 }
 
 func New(cfg config.Config, logger *slog.Logger) (*Server, error) {
@@ -85,11 +86,14 @@ func New(cfg config.Config, logger *slog.Logger) (*Server, error) {
 	s.metrics = metrics.New(cfg.Mode, cfg.Server.MetricsToken, func() metrics.SnapshotGauge {
 		nodes := reg.ListNodes(false)
 		online, offline := 0, 0
+		ups := make([]metrics.NodeUp, 0, len(nodes))
 		for _, n := range nodes {
 			if n.Online {
 				online++
+				ups = append(ups, metrics.NodeUp{NodeID: n.ID, Up: 1})
 			} else {
 				offline++
+				ups = append(ups, metrics.NodeUp{NodeID: n.ID, Up: 0})
 			}
 		}
 		activeIPerf := 0
@@ -97,6 +101,7 @@ func New(cfg config.Config, logger *slog.Logger) (*Server, error) {
 			activeIPerf = ipm.ActiveCount()
 		}
 		return metrics.SnapshotGauge{
+			NodeUps:           ups,
 			OnlineNodes:       online,
 			OfflineNodes:      offline,
 			ActiveProbes:      g.ActiveProbes(),
@@ -123,6 +128,11 @@ func New(cfg config.Config, logger *slog.Logger) (*Server, error) {
 		return nil, err
 	}
 	s.handler = withSecurityHeaders(mux, cfg.Server.AllowEmbed)
+
+	sampleCtx, sampleCancel := context.WithCancel(context.Background())
+	s.sampleCancel = sampleCancel
+	reg.StartSampling(sampleCtx, time.Duration(cfg.NodeStatus.SampleSecs)*time.Second)
+
 	return s, nil
 }
 
@@ -139,6 +149,9 @@ func (s *Server) Registry() *cluster.Registry {
 }
 
 func (s *Server) Close() {
+	if s.sampleCancel != nil {
+		s.sampleCancel()
+	}
 	if s.iperf != nil {
 		s.iperf.Close()
 	}
@@ -235,8 +248,21 @@ func (s *Server) handleMeta(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleNodes(w http.ResponseWriter, _ *http.Request) {
+	nodes := s.registry.ListNodes(true)
+	for i := range nodes {
+		if s.cfg.NodeStatus.Public {
+			nodes[i].LoadSamples = s.registry.NodeLoadSamples(nodes[i].ID)
+		} else {
+			// Privacy mode: keep only online/offline + version.
+			nodes[i].LoadAvg1, nodes[i].LoadAvg5, nodes[i].LoadAvg15 = 0, 0, 0
+			nodes[i].MemUsedPercent = 0
+			nodes[i].UptimeSeconds = 0
+			nodes[i].ActiveProbes = 0
+			nodes[i].ActiveSpeedtests = 0
+		}
+	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"nodes": s.registry.ListNodes(true),
+		"nodes": nodes,
 	})
 }
 

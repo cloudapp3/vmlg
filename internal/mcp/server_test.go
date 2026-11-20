@@ -47,6 +47,8 @@ func TestMCPStdioServerInitializeAndToolsCall(t *testing.T) {
 		`"vmlg_http"`,
 		`"mcp-test-node"`,
 		`"AS4809"`,
+		`"loadavg_1"`,
+		`"uptime_seconds"`,
 		`target is required`,
 		`url is required`,
 		`HTTP 400`,

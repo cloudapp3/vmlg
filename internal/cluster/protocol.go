@@ -58,15 +58,31 @@ type NodeDescriptor struct {
 	Online           bool             `json:"online"`
 	ConnectedAt      string           `json:"connected_at,omitempty"`
 	LastSeen         string           `json:"last_seen,omitempty"`
-	ActiveProbes     int              `json:"active_probes"`
-	ActiveSpeedtests int              `json:"active_speedtests"`
+	ActiveProbes     int              `json:"active_probes,omitempty"`
+	ActiveSpeedtests int              `json:"active_speedtests,omitempty"`
 	SpeedtestTicket  string           `json:"speedtest_ticket,omitempty"`
 	Capabilities     NodeCapabilities `json:"capabilities"`
+
+	// Coarse health snapshot (zero values hidden when node_status.public=false
+	// or before the first heartbeat arrives).
+	LoadAvg1       float64      `json:"loadavg_1,omitempty"`
+	LoadAvg5       float64      `json:"loadavg_5,omitempty"`
+	LoadAvg15      float64      `json:"loadavg_15,omitempty"`
+	MemUsedPercent float64      `json:"mem_used_percent,omitempty"`
+	UptimeSeconds  int64        `json:"uptime_seconds,omitempty"`
+	LoadSamples    []LoadSample `json:"load_samples,omitempty"` // 1h sparkline, hub-side only
 }
 
 type HeartbeatPayload struct {
-	ActiveProbes     int `json:"active_probes"`
-	ActiveSpeedtests int `json:"active_speedtests"`
+	ActiveProbes     int                 `json:"active_probes"`
+	ActiveSpeedtests int                 `json:"active_speedtests"`
+	Status           *NodeStatusSnapshot `json:"status,omitempty"`
+}
+
+// LoadSample is one point of the in-memory 1h load sparkline ring buffer.
+type LoadSample struct {
+	TS    int64   `json:"ts"` // unix seconds
+	Load1 float64 `json:"load1"`
 }
 
 type ProbeStartPayload struct {

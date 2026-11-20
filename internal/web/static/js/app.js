@@ -556,6 +556,30 @@ function buildDeepLinkURL(includeEmbed = false) {
     return u.toString();
 }
 
+function fmtUptime(seconds) {
+    const s = Number(seconds) || 0;
+    if (s < 60) return `${s}s`;
+    const m = Math.floor(s / 60);
+    if (m < 60) return `${m}m`;
+    const h = Math.floor(m / 60);
+    if (h < 24) return `${h}h${m % 60}m`;
+    const d = Math.floor(h / 24);
+    return `${d}d${h % 24}h`;
+}
+
+// 1h in-memory load sparkline (240 × 15s points from /api/v1/nodes).
+function sparklineSVG(samples) {
+    const w = 220;
+    const h = 26;
+    const loads = samples.map((p) => p.load1 || 0);
+    const max = Math.max(...loads, 0.01);
+    const step = w / Math.max(loads.length - 1, 1);
+    const points = loads.map((v, i) => `${(i * step).toFixed(1)},${(h - (v / max) * (h - 2) - 1).toFixed(1)}`).join(' ');
+    return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" role="img" aria-label="1h load">
+        <polyline points="${points}" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.85"/>
+    </svg>`;
+}
+
 function renderNodes() {
     const grid = document.getElementById('node-grid');
     const onlineCount = state.nodes.filter((n) => n.online).length;
@@ -571,6 +595,10 @@ function renderNodes() {
         const tags = (n.tags || []).map((tg) => `<span class="tag-chip">${escapeHTML(tg)}</span>`).join('');
         const subLeft = escapeHTML(n.location || n.id);
         const subRight = escapeHTML(n.asn || n.provider || '');
+        const health = n.online && n.loadavg_1 !== undefined && n.loadavg_1 !== null
+            ? `<span title="load 1/5/15 · mem · uptime">⚡ ${Number(n.loadavg_1).toFixed(2)} / ${Number(n.loadavg_5).toFixed(2)} / ${Number(n.loadavg_15).toFixed(2)} · 💾 ${Math.round(n.mem_used_percent || 0)}% · ⏱ ${fmtUptime(n.uptime_seconds)}</span>`
+            : '';
+        const spark = (n.online && n.load_samples && n.load_samples.length > 3) ? sparklineSVG(n.load_samples) : '';
         return `
             <div class="node-card ${isSel ? 'selected' : ''} ${n.online ? '' : 'offline'}" data-node-id="${escapeHTML(n.id)}">
                 <div class="node-top">
@@ -584,6 +612,8 @@ function renderNodes() {
                     <span>${subLeft}</span>
                     <span>${subRight}</span>
                 </div>
+                ${health ? `<div class="node-health mono">${health}</div>` : ''}
+                ${spark ? `<div class="node-spark">${spark}</div>` : ''}
                 ${tags ? `<div class="node-tags">${tags}</div>` : ''}
             </div>
         `;
